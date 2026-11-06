@@ -20,24 +20,11 @@
         "resizable": true,
         "fullscreen": false,
         "theme": "Dark"
-      },
-      {
-        "label": "overlay",
-        "title": "Overlay",
-        "url": "overlay",
-        "width": 260,
-        "height": 340,
-        "resizable": false,
-        "fullscreen": false,
-        "decorations": false,
-        "alwaysOnTop": true,
-        "visible": false,
-        "theme": "Dark",
-        "transparent": true
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": ["default"]
     }
   },
   "bundle": {
