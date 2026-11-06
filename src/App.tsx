@@ -28,6 +28,27 @@ function App() {
     setLogs(obtenerLogs());
   }, []);
 
+  // Lógica para el botón "Atrás" de Android
+  useEffect(() => {
+    const handleBackButton = (event: any) => {
+      event.preventDefault();
+      if (menuAbierto) {
+        setMenuAbierto(false);
+      } else if (digimonSeleccionado) {
+        setDigimonSeleccionado(null);
+      } else if (vistaActiva !== "guia") {
+        setVistaActiva("guia");
+      } else {
+        // Si ya estamos en la vista principal, permitimos que se cierre la app
+        (window as any).__TAURI__.app.exit();
+      }
+    };
+
+    // Escuchar el evento de "back" de Android
+    const unlisten = (window as any).__TAURI__.event.listen('tauri://back', handleBackButton);
+    return () => { unlisten.then((f: any) => f()); };
+  }, [menuAbierto, digimonSeleccionado, vistaActiva]);
+
   const cambiarVista = (vista: Vista) => {
     playClickSound();
     agregarLog("Navegación", `Cambió a ${vista}`);
