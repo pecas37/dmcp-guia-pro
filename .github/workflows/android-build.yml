@@ -33,12 +33,12 @@ jobs:
         with:
           packages: 'platform-tools'
 
-      # CORRECCIÓN: Usar "ndk;latest" en lugar de "ndk;27.0.0"
+      # CORRECCIÓN: Usar una versión numérica específica que existe
       - name: Instalar Android NDK
         run: |
-          sdkmanager --install "ndk;latest"
-          echo "NDK_HOME=$ANDROID_HOME/ndk-bundle" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk-bundle" >> $GITHUB_ENV
+          sdkmanager --install "ndk;27.0.0"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.0" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.0" >> $GITHUB_ENV
 
       - name: Instalar Rust y los targets de Android
         uses: dtolnay/rust-toolchain@stable
