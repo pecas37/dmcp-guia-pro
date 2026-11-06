@@ -31,6 +31,13 @@ jobs:
       - name: Configurar Android SDK
         uses: android-actions/setup-android@v3
 
+      # ESTE ES EL PASO NUEVO: Instalar el NDK
+      - name: Instalar Android NDK
+        run: |
+          sdkmanager --install "ndk;27.0.0"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.0" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.0" >> $GITHUB_ENV
+
       - name: Instalar Rust y los targets de Android
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -43,14 +50,12 @@ jobs:
 
       - name: Inicializar proyecto Android de Tauri
         run: npm run tauri android init --ci
-        env:
-          NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
 
       - name: Compilar APK de Android
         run: npm run tauri android build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+          # Ahora NDK_HOME se toma del paso de instalación
 
       - name: Subir el APK como artefacto descargable
         uses: actions/upload-artifact@v4
