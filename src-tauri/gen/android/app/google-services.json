@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "966602897456",
+    "firebase_url": "https://servidor-desertor-default-rtdb.firebaseio.com",
+    "project_id": "servidor-desertor",
+    "storage_bucket": "servidor-desertor.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:966602897456:android:312d158bc66cfb23a515f5",
+        "android_client_info": {
+          "package_name": "com.dmpc.pro"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "966602897456-lfeb74r46mj6hqt3glrasdajr070r38g.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB9YCasexqpPacr1bMAyTXT5aVTEpso8Jo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "966602897456-lfeb74r46mj6hqt3glrasdajr070r38g.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
