@@ -31,7 +31,6 @@ jobs:
       - name: Configurar Android SDK
         uses: android-actions/setup-android@v3
 
-      # ESTE ES EL PASO NUEVO: Instalar el NDK
       - name: Instalar Android NDK
         run: |
           sdkmanager --install "ndk;27.0.0"
@@ -48,6 +47,9 @@ jobs:
         with:
           workspaces: src-tauri -> target
 
+      - name: Forzar creación de carpeta Android
+        run: mkdir -p src-tauri/gen/android
+
       - name: Inicializar proyecto Android de Tauri
         run: npm run tauri android init --ci
 
@@ -55,7 +57,6 @@ jobs:
         run: npm run tauri android build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Ahora NDK_HOME se toma del paso de instalación
 
       - name: Subir el APK como artefacto descargable
         uses: actions/upload-artifact@v4
