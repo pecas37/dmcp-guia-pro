@@ -33,7 +33,6 @@ jobs:
         with:
           packages: 'platform-tools'
 
-      # CORRECCIÓN: Usar la versión 28.2.13676358 que está disponible
       - name: Instalar Android NDK
         run: |
           sdkmanager --install "ndk;28.2.13676358"
@@ -49,9 +48,6 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
-
-      - name: Generar iconos para Android
-        run: npm run tauri icon
 
       - name: Inicializar proyecto Android de Tauri
         run: npm run tauri android init --ci
