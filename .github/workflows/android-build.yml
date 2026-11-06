@@ -49,10 +49,14 @@ jobs:
         with:
           workspaces: src-tauri -> target
 
+      # ESTE PASO LIMPIA CUALQUIER CARPETA ANDROID PREVIA PARA EVITAR CONFLICTOS
+      - name: Limpiar carpeta Android previa
+        run: rm -rf src-tauri/gen/android
+
       - name: Inicializar proyecto Android de Tauri
         run: npm run tauri android init --ci
 
-      # ESTE PASO COPIA TUS ICONOS PERSONALIZADOS A ANDROID
+      # ESTE PASO COPIA TUS ICONOS PERSONALIZADOS
       - name: Copiar iconos personalizados a Android
         run: |
           cp -r src-tauri/icons/android/* src-tauri/gen/android/app/src/main/res/
