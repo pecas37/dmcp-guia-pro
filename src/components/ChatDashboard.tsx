@@ -10,6 +10,7 @@ import {
   obtenerUsuariosBloqueados,
   bloquearUsuario
 } from "../utils/almacenamiento";
+import { registrarNotificaciones } from "../utils/notificaciones"; // IMPORTAMOS LA FUNCIÓN
 
 export default function ChatDashboard() {
   const [mensajes, setMensajes] = useState<any[]>([]);
@@ -19,16 +20,14 @@ export default function ChatDashboard() {
   const [miDigimon] = useState(obtenerMiDigimon());
   const listaRef = useRef<HTMLDivElement>(null);
   
-  // Estados de navegación
   const [modoChat, setModoChat] = useState<"general" | "privado">("general");
   const [salaPrivada, setSalaPrivada] = useState("");
   
-  // Estados para solicitudes y notificaciones
   const [solicitudSeleccionada, setSolicitudSeleccionada] = useState<any>(null);
   const [mostrarNotificacion, setMostrarNotificacion] = useState(false);
   const [bloqueados, setBloqueados] = useState<string[]>(obtenerUsuariosBloqueados());
 
-  // Pedir nombre si no lo tiene
+  // Pedir nombre y registrar notificaciones
   useEffect(() => {
     if (!miNombre) {
       const nombre = prompt("Ingresa tu nombre visible para el chat:");
@@ -37,14 +36,17 @@ export default function ChatDashboard() {
         setMiNombre(nombre);
       }
     }
-  }, [miNombre]);
+    
+    // Llamamos a la función de notificaciones
+    if (miId) {
+      registrarNotificaciones(miId);
+    }
+  }, [miNombre, miId]);
 
-  // Definir la ruta de los mensajes
   const rutaMensajes = modoChat === "general" 
     ? 'chat/general' 
     : (salaPrivada ? `chat/privado/${salaPrivada}` : null);
 
-  // Escuchar mensajes
   useEffect(() => {
     if (!rutaMensajes) {
       setMensajes([]);
@@ -65,7 +67,6 @@ export default function ChatDashboard() {
     return () => unsubscribe();
   }, [rutaMensajes]);
 
-  // ESCUCHAR SOLICITUDES ENTRANTES
   useEffect(() => {
     if (!miId) return;
     const solicitudesRef = ref(db, `solicitudes/${miId}`);
@@ -73,7 +74,6 @@ export default function ChatDashboard() {
     const unsubscribe = onValue(solicitudesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        // Tomar la primera solicitud pendiente
         const primeraSolicitud = Object.values(data)[0] as any;
         if (primeraSolicitud && !bloqueados.includes(primeraSolicitud.deId)) {
           setSolicitudSeleccionada(primeraSolicitud);
@@ -87,12 +87,10 @@ export default function ChatDashboard() {
     return () => unsubscribe();
   }, [miId, bloqueados]);
 
-  // Auto-scroll
   useEffect(() => {
     if (listaRef.current) listaRef.current.scrollTop = listaRef.current.scrollHeight;
   }, [mensajes]);
 
-  // Función para enviar una solicitud
   const enviarSolicitud = async (autorId: string, autorNombre: string) => {
     if (autorId === miId || bloqueados.includes(autorId)) return;
     playClickSound();
@@ -108,17 +106,14 @@ export default function ChatDashboard() {
     setSolicitudSeleccionada(null);
   };
 
-  // Función para aceptar la solicitud
   const aceptarSolicitud = async () => {
     if (!solicitudSeleccionada) return;
     playClickSound();
     
-    // Crear sala privada ordenando IDs
     const sala = [miId, solicitudSeleccionada.deId].sort().join("-");
     setSalaPrivada(sala);
     setModoChat("privado");
     
-    // Borrar la solicitud de Firebase
     const solicitudesRef = ref(db, `solicitudes/${miId}`);
     await remove(solicitudesRef);
     
@@ -126,7 +121,6 @@ export default function ChatDashboard() {
     setSolicitudSeleccionada(null);
   };
 
-  // Función para rechazar la solicitud
   const rechazarSolicitud = async () => {
     if (!solicitudSeleccionada) return;
     playClickSound();
@@ -136,7 +130,6 @@ export default function ChatDashboard() {
     setSolicitudSeleccionada(null);
   };
 
-  // Función para bloquear al usuario
   const bloquearAlUsuario = async () => {
     if (!solicitudSeleccionada) return;
     playClickSound();
@@ -167,7 +160,6 @@ export default function ChatDashboard() {
   return (
     <div className="h-full w-full flex flex-col animate-fade-in bg-slate-950/80 rounded-xl overflow-hidden border border-slate-800 shadow-2xl relative">
       
-      {/* NOTIFICACIÓN DE SOLICITUD (MODAL) */}
       {mostrarNotificacion && solicitudSeleccionada && (
         <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-blue-500/50 rounded-xl p-4 w-full max-w-xs shadow-[0_0_30px_rgba(59,130,246,0.4)]">
@@ -184,7 +176,6 @@ export default function ChatDashboard() {
         </div>
       )}
 
-      {/* Selector de Modo */}
       <div className="flex bg-slate-900 border-b border-slate-700">
         <button onClick={() => { playClickSound(); setModoChat("general"); setSalaPrivada(""); }} className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${modoChat === "general" ? "text-blue-400 border-b-2 border-blue-500" : "text-slate-500 hover:text-slate-300"}`}>🌍 General</button>
         <button onClick={() => { playClickSound(); setModoChat("privado"); }} className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${modoChat === "privado" ? "text-blue-400 border-b-2 border-blue-500" : "text-slate-500 hover:text-slate-300"}`}>🔒 Privado</button>
@@ -201,7 +192,6 @@ export default function ChatDashboard() {
         </div>
       )}
 
-      {/* Lista de mensajes */}
       <div ref={listaRef} className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
         {mensajes.length === 0 ? (
           <p className="text-center text-slate-500 text-xs mt-10">No hay mensajes aún.</p>
@@ -209,7 +199,6 @@ export default function ChatDashboard() {
           mensajes.map((msg) => (
             <div key={msg.id} className={`flex flex-col ${msg.autorId === miId ? "items-end" : "items-start"}`}>
               <div className="flex items-center gap-1.5 mb-0.5">
-                {/* Hacer clic en el nombre para enviar solicitud */}
                 <span 
                   onClick={() => msg.autorId !== miId && enviarSolicitud(msg.autorId, msg.autorNombre)}
                   className={`text-[9px] font-bold ${msg.autorId !== miId ? "text-blue-400 hover:text-blue-300 cursor-pointer underline decoration-dotted" : "text-slate-500"}`}
