@@ -15,27 +15,25 @@ export default function SimuladorDashboard() {
     if (!miDigimon) return;
     agregarLog("Simulación", `Simuló evoluciones para ${miDigimon}`);
     
-    // ... (lógica de cálculo idéntica a la que ya tenías) ...
     const filaPrincipal = listaCompleta.find((d: any) => d.Digimon === miDigimon);
     if (!filaPrincipal) return;
-
     const etapaActual = filaPrincipal.Etapa;
-    let columnaRequisito = "";
-    if (etapaActual === "BB1") columnaRequisito = "De BB1 a BB2";
-    else if (etapaActual === "BB2") columnaRequisito = "De BB2 a CHILD";
-    else if (etapaActual === "CHILD") columnaRequisito = "De CHILD a ADULT";
-    else if (etapaActual === "ADULT") columnaRequisito = "De ADULT a PERFECT";
-    else if (etapaActual === "PERFECT") columnaRequisito = "De PERFECT a ULTIMATE";
-    else if (etapaActual === "ULTIMATE") columnaRequisito = "De ULTIMATE a SUPER ULTIMATE";
+    let col = "";
+    if (etapaActual === "BB1") col = "De BB1 a BB2";
+    else if (etapaActual === "BB2") col = "De BB2 a CHILD";
+    else if (etapaActual === "CHILD") col = "De CHILD a ADULT";
+    else if (etapaActual === "ADULT") col = "De ADULT a PERFECT";
+    else if (etapaActual === "PERFECT") col = "De PERFECT a ULTIMATE";
+    else if (etapaActual === "ULTIMATE") col = "De ULTIMATE a SUPER ULTIMATE";
     else return;
 
     const evolucionesPosibles = listaCompleta
       .filter((f: any) => f.Digimon === miDigimon && f["Evoluciona A"] && f["Evoluciona A"].trim() !== "")
       .map((fila: any) => {
-        const reqText = requisitos.find((r: any) => r.RAMA === fila.Rama)?.[columnaRequisito] || "";
+        // CORRECCIÓN AQUÍ: Añadido 'as any' para evitar el error de TypeScript
+        const reqText = (requisitos.find((r: any) => r.RAMA === fila.Rama) as any)?.[col] || "";
         const reqLower = reqText.toLowerCase();
-        let cumple = true;
-        let faltantes: string[] = [];
+        let cumple = true; let faltantes: string[] = [];
 
         if (reqLower.includes("(atk)") && (stats.atk === 0 || stats.atk < stats.def || stats.atk < stats.dex)) { cumple = false; faltantes.push("ATK > DEF/DEX"); }
         if (reqLower.includes("(def)") && (stats.def === 0 || stats.def < stats.atk || stats.def < stats.dex)) { cumple = false; faltantes.push("DEF > ATK/DEX"); }
@@ -50,38 +48,31 @@ export default function SimuladorDashboard() {
           else if (mEntMin && stats.entrenamientos < parseInt(mEntMin[1])) { cumple = false; faltantes.push(`Entren. ${mEntMin[1]}+`); }
           else if (mEntAlMenos && stats.entrenamientos < parseInt(mEntAlMenos[1])) { cumple = false; faltantes.push(`Entren. ${mEntAlMenos[1]}+`); }
         }
-
         const mBat = reqLower.match(/(\d+) batallas/);
         if (mBat && stats.batallas < parseInt(mBat[1])) { cumple = false; faltantes.push(`Batallas ${mBat[1]}+`); }
-
         if (reqLower.includes("luz encendida") && stats.luz !== "Encendida") { cumple = false; faltantes.push("Luz On"); }
         if (reqLower.includes("luz apagada") && stats.luz !== "Apagada") { cumple = false; faltantes.push("Luz Off"); }
-
+        
         const mErrMenos = reqLower.match(/menos de (\d+)/);
         const mErrMas = reqLower.match(/m[áa]s de (\d+)/);
         if (reqLower.includes("errores de cuidado")) {
           if (mErrMenos && stats.errores >= parseInt(mErrMenos[1])) { cumple = false; faltantes.push(`Err < ${mErrMenos[1]}`); }
           else if (mErrMas && stats.errores <= parseInt(mErrMas[1])) { cumple = false; faltantes.push(`Err > ${mErrMas[1]}`); }
         }
-
         const mWin = reqLower.match(/mayor al (\d+)%/);
-        if (mWin) {
-          const wr = stats.batallas > 0 ? (stats.victorias / stats.batallas) * 100 : 0;
-          if (wr <= parseInt(mWin[1])) { cumple = false; faltantes.push(`WinRate >${mWin[1]}%`); }
-        }
-
+        if (mWin) { const wr = stats.batallas > 0 ? (stats.victorias / stats.batallas) * 100 : 0; if (wr <= parseInt(mWin[1])) { cumple = false; faltantes.push(`WinRate >${mWin[1]}%`); } }
+        
         const mAnimo = reqLower.match(/animo (\w+)/);
         if (mAnimo && stats.animo !== mAnimo[1]) { cumple = false; faltantes.push(`Ánimo ${mAnimo[1]}`); }
-
+        
         const mPesoRango = reqLower.match(/entre (\d+) y (\d+)/);
         if (mPesoRango && (stats.peso < parseInt(mPesoRango[1]) || stats.peso > parseInt(mPesoRango[2]))) { cumple = false; faltantes.push(`Peso ${mPesoRango[1]}-${mPesoRango[2]}g`); }
-
+        
         const mEdad = reqLower.match(/(\d+) a[ñn]os/);
         if (mEdad && stats.edad < parseInt(mEdad[1])) { cumple = false; faltantes.push(`Edad ${mEdad[1]} años`); }
 
         return { evolucionaA: fila["Evoluciona A"], rama: fila.Rama, requisito: reqText, cumple, faltantes };
       });
-
     setResultados(evolucionesPosibles);
   };
 
@@ -93,9 +84,7 @@ export default function SimuladorDashboard() {
         <h2 className="text-lg font-bold text-white text-glow">Simulador de Requisitos</h2>
         <p className="text-[10px] text-slate-400 mt-0.5">Evaluando: <span className="text-blue-400 font-bold">{miDigimon}</span></p>
       </div>
-
       <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
-        <h3 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-2">Tus Estadísticas</h3>
         <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
           <div><label className="text-[9px] text-slate-500 uppercase">ATK</label><input type="number" min="0" onChange={e => setStats({...stats, atk: parseInt(e.target.value) || 0})} className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white" /></div>
           <div><label className="text-[9px] text-slate-500 uppercase">DEF</label><input type="number" min="0" onChange={e => setStats({...stats, def: parseInt(e.target.value) || 0})} className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white" /></div>
@@ -111,7 +100,6 @@ export default function SimuladorDashboard() {
         </div>
         <button onClick={calcularEvoluciones} className="mt-3 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 rounded text-xs transition-colors">Calcular</button>
       </div>
-
       <div className="space-y-2">
         {resultados.map((res, i) => (
           <div key={i} className={`bg-slate-900/40 border rounded-lg p-2.5 ${res.cumple ? "border-green-500/50" : "border-red-500/30"}`}>
