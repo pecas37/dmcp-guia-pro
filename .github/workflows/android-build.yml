@@ -49,8 +49,16 @@ jobs:
         with:
           workspaces: src-tauri -> target
 
+      - name: Generar iconos (si es necesario)
+        run: npm run tauri icon
+
       - name: Inicializar proyecto Android de Tauri
         run: npm run tauri android init --ci
+
+      # --- ESTE ES EL PASO NUEVO QUE COPIA LOS ICONOS ---
+      - name: Copiar iconos personalizados a Android
+        run: |
+          cp -r src-tauri/icons/android/* src-tauri/gen/android/app/src/main/res/
 
       - name: Compilar APK de Android
         run: npm run tauri android build
