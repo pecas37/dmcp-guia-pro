@@ -17,8 +17,6 @@ function App() {
   const [familiaActiva, setFamiliaActiva] = useState(familias[0] || "DEEP SAVERS");
   const [digimonSeleccionado, setDigimonSeleccionado] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
-  
-  // Estado para el menú en móvil
   const [menuAbierto, setMenuAbierto] = useState(false);
 
   const [miDigimon, setMiDigimon] = useState<string | null>(null);
@@ -35,7 +33,7 @@ function App() {
     agregarLog("Navegación", `Cambió a ${vista}`);
     setLogs(obtenerLogs());
     setVistaActiva(vista);
-    setMenuAbierto(false); // Cerramos el menú al elegir
+    setMenuAbierto(false);
   };
 
   const mostrarToast = (mensaje: string) => {
@@ -144,17 +142,20 @@ function App() {
   };
 
   return (
-    <div className="h-screen w-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black font-sans text-slate-200 flex overflow-hidden relative">
+    <div 
+      className="h-screen w-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black font-sans text-slate-200 flex overflow-hidden relative"
+      style={{ 
+        paddingTop: 'env(safe-area-inset-top)', 
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)'
+      }}
+    >
       
-      {/* OVERLAY OSCURO PARA EL MENÚ EN MÓVIL */}
       {menuAbierto && (
-        <div 
-          className="fixed inset-0 bg-black/60 z-30 md:hidden"
-          onClick={() => setMenuAbierto(false)}
-        ></div>
+        <div className="fixed inset-0 bg-black/60 z-30 md:hidden" onClick={() => setMenuAbierto(false)}></div>
       )}
 
-      {/* SIDEBAR RESPONSIVE */}
       <div className={`
         fixed md:static inset-y-0 left-0 z-40
         w-64 md:w-56 bg-slate-900/95 md:bg-slate-900/80 backdrop-blur-md 
@@ -178,7 +179,6 @@ function App() {
         </div>
       </div>
 
-      {/* CONTENIDO PRINCIPAL */}
       <div className="flex-1 flex flex-col relative overflow-hidden w-full">
         {mensajeToast && (
           <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-50 animate-fade-in-down w-[90%] md:w-auto">
@@ -188,13 +188,8 @@ function App() {
           </div>
         )}
 
-        {/* CABECERA COMPACTA Y RESPONSIVE */}
         <div className="bg-slate-900/50 border-b border-slate-800 px-2 py-2 flex items-center gap-2 z-10 flex-shrink-0">
-          {/* BOTÓN HAMBURGUESA SOLO EN MÓVIL */}
-          <button 
-            className="md:hidden p-2 text-slate-300 hover:text-white"
-            onClick={() => setMenuAbierto(true)}
-          >
+          <button className="md:hidden p-2 text-slate-300 hover:text-white" onClick={() => setMenuAbierto(true)}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -213,7 +208,6 @@ function App() {
           </div>
         </div>
 
-        {/* VISTAS DINÁMICAS */}
         <div className="flex-1 overflow-y-auto p-2 md:p-4 custom-scrollbar">
           {vistaActiva === "guia" && (
             !digimonSeleccionado ? (
