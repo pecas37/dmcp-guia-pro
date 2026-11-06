@@ -28,8 +28,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      # CORRECCIÓN AQUÍ: Le decimos que solo instale 'platform-tools' para evitar el error del paquete 'tools'
       - name: Configurar Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
 
       - name: Instalar Android NDK
         run: |
@@ -47,8 +50,8 @@ jobs:
         with:
           workspaces: src-tauri -> target
 
-      - name: Forzar creación de carpeta Android
-        run: mkdir -p src-tauri/gen/android
+      - name: Generar iconos para Android
+        run: npm run tauri icon
 
       - name: Inicializar proyecto Android de Tauri
         run: npm run tauri android init --ci
