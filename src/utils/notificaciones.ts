@@ -1,31 +1,42 @@
-import { isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification';
-import { db } from './firebase';
-import { ref, set } from 'firebase/database';
+import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification';
 
-export const registrarNotificaciones = async (userId: string) => {
+// Sonido de notificación sintetizado (estilo consola)
+export const playNotificacionSound = () => {
   try {
-    // 1. Pedir permiso al usuario
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.frequency.setValueAtTime(800, ctx.currentTime + 0.1);
+    osc.frequency.setValueAtTime(1000, ctx.currentTime + 0.2);
+
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  } catch (e) { console.error(e); }
+};
+
+// Mostrar notificación nativa (PC y Android)
+export const mostrarNotificacion = async (titulo: string, cuerpo: string) => {
+  try {
     let permissionGranted = await isPermissionGranted();
     if (!permissionGranted) {
       const permission = await requestPermission();
       permissionGranted = permission === 'granted';
     }
-
-    if (!permissionGranted) {
-      console.log('Permiso de notificaciones denegado.');
-      return;
+    if (permissionGranted) {
+      sendNotification({ title: titulo, body: cuerpo });
     }
-
-    // 2. Registrar al usuario como "activo" en Firebase
-    // (Esto permite saber que el usuario está conectado y puede recibir notificaciones)
-    await set(ref(db, `usuarios_activos/${userId}`), {
-      activo: true,
-      ultimaConexion: Date.now()
-    });
-
-    console.log('Notificaciones registradas para el usuario:', userId);
-
   } catch (error) {
-    console.error('Error al registrar notificaciones:', error);
+    console.error("Error al mostrar notificación", error);
   }
 };

@@ -10,31 +10,19 @@ export const obtenerLogs = () => {
   const logs = localStorage.getItem("dmpc_logs");
   return logs ? JSON.parse(logs) : [];
 };
-
 export const agregarLog = (accion: string, detalles: string = "") => {
   const logs = obtenerLogs();
   const nuevoLog = { fecha: new Date().toISOString(), accion, detalles };
   localStorage.setItem("dmpc_logs", JSON.stringify([nuevoLog, ...logs]));
 };
+export const borrarLogs = () => { localStorage.removeItem("dmpc_logs"); };
 
-export const borrarLogs = () => {
-  localStorage.removeItem("dmpc_logs");
-};
-
-// --- NOTAS (SISTEMA DE MÚLTIPLES NOTAS) ---
+// --- NOTAS ---
 export const obtenerNotas = (nombre: string) => {
   const notas = localStorage.getItem(`dmpc_notas_${nombre}`);
   if (!notas) return [];
-  try {
-    const parseadas = JSON.parse(notas);
-    if (Array.isArray(parseadas)) return parseadas;
-    if (typeof parseadas === "string") return [{ id: Date.now().toString(), texto: parseadas, fecha: new Date().toISOString() }];
-    return [];
-  } catch (e) {
-    return [];
-  }
+  try { return JSON.parse(notas); } catch { return []; }
 };
-
 export const guardarNotas = (nombre: string, notas: any[]) => {
   localStorage.setItem(`dmpc_notas_${nombre}`, JSON.stringify(notas));
 };
@@ -48,25 +36,33 @@ export const obtenerMiIdChat = () => {
   }
   return id;
 };
+export const obtenerMiNombreChat = () => localStorage.getItem("dmpc_chat_nombre") || "";
+export const guardarMiNombreChat = (nombre: string) => localStorage.setItem("dmpc_chat_nombre", nombre);
 
-export const obtenerMiNombreChat = () => {
-  return localStorage.getItem("dmpc_chat_nombre") || "";
-};
-
-export const guardarMiNombreChat = (nombre: string) => {
-  localStorage.setItem("dmpc_chat_nombre", nombre);
-};
-
-// --- BLOQUEOS LOCALES ---
-// Guardamos en el navegador los IDs de los usuarios que hemos bloqueado
+// --- BLOQUEOS Y MENSAJES OCULTOS ---
 export const obtenerUsuariosBloqueados = () => {
   const bloqueados = localStorage.getItem("dmpc_chat_bloqueados");
   return bloqueados ? JSON.parse(bloqueados) : [];
 };
-
 export const bloquearUsuario = (id: string) => {
   const bloqueados = obtenerUsuariosBloqueados();
-  if (!bloqueados.includes(id)) {
-    localStorage.setItem("dmpc_chat_bloqueados", JSON.stringify([...bloqueados, id]));
-  }
+  if (!bloqueados.includes(id)) localStorage.setItem("dmpc_chat_bloqueados", JSON.stringify([...bloqueados, id]));
+};
+export const desbloquearUsuario = (id: string) => {
+  const bloqueados = obtenerUsuariosBloqueados();
+  const nuevos = bloqueados.filter((b: string) => b !== id);
+  localStorage.setItem("dmpc_chat_bloqueados", JSON.stringify(nuevos));
+  return nuevos;
+};
+
+// NUEVO: Ocultar mensajes (para no borrar los del otro)
+export const ocultarMensajesHasta = (sala: string, timestamp: number) => {
+  const ocultos = JSON.parse(localStorage.getItem("dmpc_msgs_ocultos") || "{}");
+  ocultos[sala] = timestamp;
+  localStorage.setItem("dmpc_msgs_ocultos", JSON.stringify(ocultos));
+};
+
+export const obtenerTimestampOculto = (sala: string) => {
+  const ocultos = JSON.parse(localStorage.getItem("dmpc_msgs_ocultos") || "{}");
+  return ocultos[sala] || 0;
 };

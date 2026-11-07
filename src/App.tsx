@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { familias, requisitos, listaCompleta } from "./data/digimonData"; 
 import { playClickSound } from "./utils/sonidos";
 import { obtenerMiDigimon, guardarMiDigimon, obtenerLogs, agregarLog, borrarLogs } from "./utils/almacenamiento";
@@ -21,31 +22,42 @@ function App() {
 
   const [miDigimon, setMiDigimon] = useState<string | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
+  
+  // Estados para el Toast
   const [mensajeToast, setMensajeToast] = useState<string | null>(null);
+  const [visible, setVisible] = useState(false); // Controla la animación
 
   useEffect(() => {
     setMiDigimon(obtenerMiDigimon());
     setLogs(obtenerLogs());
   }, []);
 
-  // Lógica para el botón "Atrás" de Android
   useEffect(() => {
-    const handleBackButton = (event: any) => {
-      event.preventDefault();
-      if (menuAbierto) {
-        setMenuAbierto(false);
-      } else if (digimonSeleccionado) {
-        setDigimonSeleccionado(null);
-      } else if (vistaActiva !== "guia") {
-        setVistaActiva("guia");
-      } else {
-        (window as any).__TAURI__.app.exit();
+    try {
+      const tauri = (window as any).__TAURI__;
+      if (tauri && tauri.event) {
+        const unlisten = tauri.event.listen('tauri://back', () => {
+          if (menuAbierto) setMenuAbierto(false);
+          else if (digimonSeleccionado) setDigimonSeleccionado(null);
+          else if (vistaActiva !== "guia") setVistaActiva("guia");
+          else tauri.app.exit();
+        });
+        return () => { unlisten.then((f: any) => f()); };
       }
-    };
-
-    const unlisten = (window as any).__TAURI__.event.listen('tauri://back', handleBackButton);
-    return () => { unlisten.then((f: any) => f()); };
+    } catch (e) { console.log("Botón atrás no disponible."); }
   }, [menuAbierto, digimonSeleccionado, vistaActiva]);
+
+  // Función mejorada para mostrar y ocultar el toast
+  const mostrarToast = (mensaje: string) => {
+    setMensajeToast(mensaje);
+    setVisible(true);
+    // Después de 3 segundos, iniciamos la animación de salida
+    setTimeout(() => {
+      setVisible(false);
+      // Después de 0.4s (la duración de la animación de salida), limpiamos el mensaje
+      setTimeout(() => setMensajeToast(null), 400);
+    }, 3000);
+  };
 
   const cambiarVista = (vista: Vista) => {
     playClickSound();
@@ -53,11 +65,6 @@ function App() {
     setLogs(obtenerLogs());
     setVistaActiva(vista);
     setMenuAbierto(false);
-  };
-
-  const mostrarToast = (mensaje: string) => {
-    setMensajeToast(mensaje);
-    setTimeout(() => setMensajeToast(null), 3000);
   };
 
   const handleBusqueda = (texto: string) => {
@@ -171,6 +178,21 @@ function App() {
       }}
     >
       
+      {/* TOAST CON ANIMACIÓN DE ENTRADA Y SALIDA LATERAL */}
+      {mensajeToast && createPortal(
+        <div 
+          className={`fixed top-4 right-4 z-[9999] pointer-events-none ${
+            visible ? "animate-slide-in-right" : "animate-slide-out-right"
+          }`}
+        >
+          <div className="bg-slate-800 border border-blue-500/50 text-white px-4 py-2 rounded-lg shadow-[0_0_20px_rgba(59,130,246,0.5)] flex items-center gap-2 max-w-[90vw] pointer-events-auto">
+            <span className="text-lg flex-shrink-0">ℹ️</span>
+            <p className="text-sm font-medium break-words">{mensajeToast}</p>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {menuAbierto && (
         <div className="fixed inset-0 bg-black/60 z-30 md:hidden" onClick={() => setMenuAbierto(false)}></div>
       )}
@@ -199,14 +221,6 @@ function App() {
       </div>
 
       <div className="flex-1 flex flex-col relative overflow-hidden w-full">
-        {mensajeToast && (
-          <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-50 animate-fade-in-down w-[90%] md:w-auto">
-            <div className="bg-slate-800 border border-blue-500/50 text-white px-4 py-2 rounded-lg shadow-[0_0_20px_rgba(59,130,246,0.5)] flex items-center gap-2 justify-center">
-              <span className="text-lg">ℹ️</span><p className="text-xs font-medium">{mensajeToast}</p>
-            </div>
-          </div>
-        )}
-
         <div className="bg-slate-900/50 border-b border-slate-800 px-2 py-2 flex items-center gap-2 z-10 flex-shrink-0">
           <button className="md:hidden p-2 text-slate-300 hover:text-white" onClick={() => setMenuAbierto(true)}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
