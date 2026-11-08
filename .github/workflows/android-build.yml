@@ -55,57 +55,43 @@ jobs:
       - name: Inicializar proyecto Android de Tauri
         run: npm run tauri android init --ci
 
-      # --- SOLUCIÓN: Generar tauri.settings.gradle con la ruta correcta al proyecto Rust ---
-      - name: Crear tauri.settings.gradle con la configuración correcta
+      # --- SOLUCIÓN DEFINITIVA: Usar el Gradle que tú descargaste ---
+      - name: Configurar Gradle local
         run: |
           cd src-tauri/gen/android
-          # La ruta a la carpeta src-tauri (donde está el Cargo.toml) desde gen/android es ../../../
-          # Tauri espera que este archivo defina la ruta al proyecto de Rust para compilarlo
+          # Detectar la versión que pide el wrapper
+          GRADLE_VERSION=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
+          echo "Versión de Gradle requerida: $GRADLE_VERSION"
+
+          # Ruta al zip que tú subiste (está en la raíz del repo, carpeta gradle-cache)
+          LOCAL_ZIP="$GITHUB_WORKSPACE/gradle-cache/gradle-${GRADLE_VERSION}-bin.zip"
+
+          if [ ! -f "$LOCAL_ZIP" ]; then
+            echo "ERROR: No se encontró el archivo $LOCAL_ZIP"
+            echo "Asegúrate de haber subido el .zip a la carpeta gradle-cache en tu repositorio."
+            exit 1
+          fi
+
+          # Apuntar el wrapper al archivo local
+          sed -i "s|distributionUrl=.*|distributionUrl=file://${LOCAL_ZIP}|" gradle/wrapper/gradle-wrapper.properties
+          echo "Configuración del wrapper:"
+          cat gradle/wrapper/gradle-wrapper.properties
+
+      - name: Crear tauri.settings.gradle y local.properties
+        run: |
+          cd src-tauri/gen/android
+          # tauri.settings.gradle (el que faltaba)
           cat > tauri.settings.gradle << 'EOF'
-          // Configuración generada manualmente para CI
           def tauriProjectDir = new File(rootDir, "../../../")
           include ':tauri-android'
           project(':tauri-android').projectDir = new File(tauriProjectDir, 'tauri-android')
           EOF
-          echo "Contenido de tauri.settings.gradle:"
-          cat tauri.settings.gradle
-
-      - name: Configurar local.properties con la ruta del SDK
-        run: |
-          cd src-tauri/gen/android
+          # local.properties
           echo "sdk.dir=$ANDROID_HOME" > local.properties
 
       - name: Copiar iconos personalizados a Android
         run: |
           cp -r src-tauri/icons/android/* src-tauri/gen/android/app/src/main/res/
-
-      # --- Descarga manual de Gradle (se mantiene) ---
-      - name: Descargar Gradle manualmente
-        run: |
-          cd src-tauri/gen/android
-          GRADLE_VERSION=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
-          echo "Versión de Gradle: $GRADLE_VERSION"
-          GRADLE_URL="https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
-
-          for i in {1..5}; do
-            echo "Intento $i de descarga..."
-            if curl -L --retry 3 --connect-timeout 30 --max-time 600 -o gradle-download.zip "$GRADLE_URL"; then
-              echo "Descarga exitosa."
-              break
-            else
-              echo "Intento $i falló. Esperando 15 segundos..."
-              sleep 15
-            fi
-          done
-
-          if [ ! -f gradle-download.zip ]; then
-            echo "ERROR: No se pudo descargar Gradle."
-            exit 1
-          fi
-
-          LOCAL_PATH=$(pwd)/gradle-download.zip
-          sed -i "s|distributionUrl=.*|distributionUrl=file://${LOCAL_PATH}|" gradle/wrapper/gradle-wrapper.properties
-          cat gradle/wrapper/gradle-wrapper.properties
 
       - name: Configurar Gradle para GitHub Actions
         run: |
