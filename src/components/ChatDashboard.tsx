@@ -289,7 +289,6 @@ export default function ChatDashboard() {
                 {msg.digimon && <span className="text-[8px] bg-slate-800 text-blue-400 px-1 rounded">{msg.digimon}</span>}
               </div>
               
-              {/* DISEÑO DEL MENSAJE Y BOTÓN DE BORRAR VISIBLE EN MÓVIL */}
               <div className={`flex items-center gap-2 max-w-[90%] ${msg.autorId === miId ? "flex-row" : "flex-row-reverse"}`}>
                 <div className={`px-3 py-1.5 rounded-lg text-sm break-words ${msg.autorId === miId ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-200"}`}>
                   {msg.texto}

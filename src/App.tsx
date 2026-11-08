@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { db } from "./utils/firebase"; // IMPORTANTE: Importar Firebase aquí
-import { ref, query, orderByChild, limitToLast, onValue } from "firebase/database"; // IMPORTANTE
+import { db } from "./utils/firebase";
+import { ref, query, orderByChild, limitToLast, onValue } from "firebase/database";
 import { playClickSound } from "./utils/sonidos";
-import { playNotificacionSound, mostrarNotificacion } from "./utils/notificaciones"; // IMPORTANTE
+import { playNotificacionSound, mostrarNotificacion } from "./utils/notificaciones";
 import { obtenerProgreso, guardarProgreso, obtenerLogs, agregarLog, borrarLogs, obtenerMiIdChat } from "./utils/almacenamiento";
 import { 
   FAMILIAS_SEGURAS, 
@@ -31,34 +31,42 @@ function App() {
   const [mensajeToast, setMensajeToast] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
 
-  // --- LÓGICA GLOBAL DE NOTIFICACIONES ---
+  // --- LÓGICA GLOBAL DE NOTIFICACIONES PRIVADAS ---
   const miIdGlobal = obtenerMiIdChat();
   
   useEffect(() => {
-    // Escuchamos los últimos mensajes del chat general
-    const q = query(ref(db, 'chat/general'), orderByChild('timestamp'), limitToLast(1));
-    let primerCarga = true;
+    const conversacionesGuardadas = JSON.parse(localStorage.getItem("dmpc_chat_conversaciones") || "[]");
+    
+    if (conversacionesGuardadas.length === 0) return;
 
-    const unsubscribe = onValue(q, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const lista = Object.values(data) as any[];
-        const ultimo = lista[0];
-        
-        if (ultimo && ultimo.autorId !== miIdGlobal) {
-          // Evitamos notificar el mensaje que ya existía al abrir la app
-          if (!primerCarga) {
-            playNotificacionSound();
-            mostrarNotificacion("Nuevo mensaje en DMPC PRO", `${ultimo.autorNombre}: ${ultimo.texto}`);
-            mostrarToastGlobal(`💬 ${ultimo.autorNombre}: ${ultimo.texto}`);
+    const unsubscribes: (() => void)[] = [];
+    
+    conversacionesGuardadas.forEach((conv: any) => {
+      const q = query(ref(db, `chat/privado/${conv.id}`), orderByChild('timestamp'), limitToLast(1));
+      let primerCarga = true;
+
+      const unsubscribe = onValue(q, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          const lista = Object.values(data) as any[];
+          const ultimo = lista[0];
+          
+          if (ultimo && ultimo.autorId !== miIdGlobal) {
+            if (!primerCarga) {
+              playNotificacionSound();
+              mostrarNotificacion(`Mensaje privado de ${ultimo.autorNombre}`, ultimo.texto);
+              mostrarToastGlobal(`💬 ${ultimo.autorNombre}: ${ultimo.texto}`);
+            }
           }
         }
-      }
-      primerCarga = false;
+        primerCarga = false;
+      });
+      unsubscribes.push(unsubscribe);
     });
-    return () => unsubscribe();
+
+    return () => unsubscribes.forEach(unsub => unsub());
   }, [miIdGlobal]);
-  // ---------------------------------------
+  // -----------------------------------------------
 
   useEffect(() => {
     setProgreso(obtenerProgreso());
