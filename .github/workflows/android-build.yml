@@ -55,25 +55,31 @@ jobs:
       - name: Inicializar proyecto Android de Tauri
         run: npm run tauri android init --ci
 
-      # --- SOLUCIÓN AL ERROR DE tauri.settings.gradle ---
-      - name: Crear tauri.settings.gradle manualmente
+      # --- SOLUCIÓN: Generar tauri.settings.gradle con la ruta correcta al proyecto Rust ---
+      - name: Crear tauri.settings.gradle con la configuración correcta
         run: |
           cd src-tauri/gen/android
-          # Este archivo le dice a Gradle dónde encontrar los módulos de Tauri
-          echo "include ':app'" > tauri.settings.gradle
-          echo "// Archivo generado manualmente para CI" >> tauri.settings.gradle
+          # La ruta a la carpeta src-tauri (donde está el Cargo.toml) desde gen/android es ../../../
+          # Tauri espera que este archivo defina la ruta al proyecto de Rust para compilarlo
+          cat > tauri.settings.gradle << 'EOF'
+          // Configuración generada manualmente para CI
+          def tauriProjectDir = new File(rootDir, "../../../")
+          include ':tauri-android'
+          project(':tauri-android').projectDir = new File(tauriProjectDir, 'tauri-android')
+          EOF
+          echo "Contenido de tauri.settings.gradle:"
+          cat tauri.settings.gradle
 
       - name: Configurar local.properties con la ruta del SDK
         run: |
           cd src-tauri/gen/android
-          # local.properties es necesario para que Gradle encuentre el SDK de Android
           echo "sdk.dir=$ANDROID_HOME" > local.properties
 
       - name: Copiar iconos personalizados a Android
         run: |
           cp -r src-tauri/icons/android/* src-tauri/gen/android/app/src/main/res/
 
-      # --- Mantenemos la descarga manual de Gradle que ya funcionó ---
+      # --- Descarga manual de Gradle (se mantiene) ---
       - name: Descargar Gradle manualmente
         run: |
           cd src-tauri/gen/android
@@ -93,7 +99,7 @@ jobs:
           done
 
           if [ ! -f gradle-download.zip ]; then
-            echo "ERROR: No se pudo descargar Gradle después de 5 intentos."
+            echo "ERROR: No se pudo descargar Gradle."
             exit 1
           fi
 
