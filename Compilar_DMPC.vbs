@@ -16,8 +16,9 @@ Do
         "=== DMPC GUIA PRO ===" & vbCrLf & vbCrLf & _
         "1. Compilar en Local (npm run tauri dev)" & vbCrLf & _
         "2. Subir a GitHub y compilar APK" & vbCrLf & _
-        "3. Salir" & vbCrLf & vbCrLf & _
-        "Elige una opcion (1-3):", _
+        "3. Compilar Instalador PC (.exe)" & vbCrLf & _
+        "4. Salir" & vbCrLf & vbCrLf & _
+        "Elige una opcion (1-4):", _
         "Compilador DMPC", "1")
 
     If respuesta = "" Then Exit Do
@@ -30,7 +31,6 @@ Do
 
         Case "2"
             If MsgBox("Seguro que deseas subir los cambios a GitHub?", vbYesNo + vbQuestion, "Confirmar") = vbYes Then
-                ' Se añade --autostash para evitar el error de "unstaged changes" y sincronizar sin problemas
                 comando = "powershell.exe -NoExit -Command """ & _
                     "$Host.UI.RawUI.BackgroundColor = 'Black'; " & _
                     "$Host.UI.RawUI.ForegroundColor = 'Green'; " & _
@@ -55,10 +55,32 @@ Do
             Exit Do
 
         Case "3"
+            ' Compilar el instalador para PC
+            comando = "powershell.exe -NoExit -Command """ & _
+                "$Host.UI.RawUI.BackgroundColor = 'Black'; " & _
+                "$Host.UI.RawUI.ForegroundColor = 'Green'; " & _
+                "Clear-Host; " & _
+                "Set-Location '" & rutaProyecto & "'; " & _
+                "Write-Host '=== COMPILANDO INSTALADOR PARA PC ===' -ForegroundColor Cyan; " & _
+                "Write-Host 'Esto puede tardar varios minutos...' -ForegroundColor Yellow; " & _
+                "npm run tauri build; " & _
+                "if ($LASTEXITCODE -eq 0) { " & _
+                "  Write-Host '=== COMPILACION EXITOSA ===' -ForegroundColor Green; " & _
+                "  Write-Host 'El instalador se ha guardado en: src-tauri/target/release/bundle/' -ForegroundColor Cyan; " & _
+                "} else { " & _
+                "  Write-Host '!!! ERROR EN LA COMPILACION !!!' -ForegroundColor Red; " & _
+                "}; " & _
+                "Write-Host '=== PROCESO TERMINADO ===' -ForegroundColor Cyan; " & _
+                "Read-Host 'Presiona Enter para cerrar'; " & _
+                "exit"""
+            objShell.Run comando, 1, False
             Exit Do
-
+            
+        Case "4"
+            Exit Do
+            
         Case Else
-            MsgBox "Opcion no valida. Por favor, elige un numero del 1 al 3.", vbExclamation, "Error"
+            MsgBox "Opcion no valida. Por favor, elige un numero del 1 al 4.", vbExclamation, "Error"
     End Select
 Loop
 

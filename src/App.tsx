@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { db } from "./utils/firebase"; // <-- Conexión a Firebase restaurada
-import { ref, onValue } from "firebase/database"; // <-- Para leer datos
+import { db } from "./utils/firebase";
+import { ref, onValue } from "firebase/database";
+import { openUrl } from "@tauri-apps/plugin-opener"; // <-- NUEVO IMPORT PARA ANDROID
 import { playClickSound } from "./utils/sonidos";
 import {
   obtenerProgreso,
@@ -26,9 +27,11 @@ type Vista = "guia" | "miProgreso" | "notas" | "historial" | "creditos";
 
 const abrirEnlace = async (url: string) => {
   try {
-    const { open } = await import('@tauri-apps/plugin-shell');
-    await open(url);
+    // Usamos el plugin opener que funciona nativamente en Android y Windows
+    await openUrl(url);
   } catch (error) {
+    console.error("Error al abrir el enlace:", error);
+    // Respaldo para navegador web
     window.open(url, "_blank");
   }
 };
@@ -46,15 +49,13 @@ function App() {
   const [mensajeToast, setMensajeToast] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
 
-  // --- ESTADO PARA EL AVISO DE FIREBASE ---
   const [avisoFirebase, setAvisoFirebase] = useState<{ texto: string, color: string } | null>(null);
 
   useEffect(() => {
     setProgreso(obtenerProgreso());
     setLogs(obtenerLogs());
 
-    // ESCUCHAR AVISO EN TIEMPO REAL DESDE FIREBASE
-    const avisoRef = ref(db, '/'); // Escucha en la raíz de tu base de datos
+    const avisoRef = ref(db, '/');
     const unsubscribeAviso = onValue(avisoRef, (snapshot) => {
       const data = snapshot.val();
       if (data && data.Texto) {
@@ -208,13 +209,13 @@ function App() {
   return (
     <div
     className="h-screen w-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black font-sans text-slate-200 flex overflow-hidden relative"
-    style={{
+    >
+    <div className="absolute inset-0 pointer-events-none" style={{
       paddingTop: 'env(safe-area-inset-top)',
           paddingBottom: 'env(safe-area-inset-bottom)',
           paddingLeft: 'env(safe-area-inset-left)',
           paddingRight: 'env(safe-area-inset-right)'
-    }}
-    >
+    }} />
 
     {mensajeToast && createPortal(
       <div className={`fixed top-10 right-4 z-[9999] pointer-events-none ${visible ? "animate-slide-in-right" : "animate-slide-out-right"}`}>
@@ -236,14 +237,17 @@ function App() {
       border-r border-blue-500/30 flex flex-col shadow-[4px_0_20px_rgba(0,0,0,0.5)]
       transform transition-transform duration-300 ease-in-out
       ${menuAbierto ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-      `}>
+      `}
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
+      >
 
-      {/* HEADER DEL MENÚ: TÍTULO Y AVISO DE FIREBASE */}
       <div className="p-3 border-b border-blue-500/20 flex justify-between items-start">
       <div className="flex flex-col gap-1 w-full">
       <h1 className="text-sm font-bold text-white tracking-widest uppercase text-glow cursor-pointer" onClick={() => { volverALista(); setMenuAbierto(false); }}>DMPC GUIA <span className="text-blue-400">PRO</span></h1>
 
-      {/* CONTENEDOR CON ALTURA FIJA PARA EVITAR SALTOS */}
       <div className="h-6 flex items-center w-full overflow-hidden">
       <div className={`
         text-[9px] font-bold px-1.5 py-0.5 rounded transition-all duration-300 w-max max-w-full truncate
@@ -268,9 +272,6 @@ function App() {
           <button onClick={() => cambiarVista("creditos")} className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm font-bold transition-all ${vistaActiva === "creditos" ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}>👨‍💻 Créditos</button>
           </div>
 
-          {/* FOOTER DEL MENÚ */}
-          <div className="p-3 border-t border-blue-500/20 text-center flex flex-col gap-2">
-          </div>
           </div>
 
           <div className="flex-1 flex flex-col relative overflow-hidden w-full">
@@ -297,7 +298,6 @@ function App() {
           )}
 
           <div className="flex-1 overflow-y-auto p-2 md:p-4 custom-scrollbar">
-
           <div style={{ display: vistaActiva === "guia" ? "block" : "none" }}>
           {!digimonSeleccionado ? (
             <div className="max-w-5xl mx-auto space-y-4">
@@ -335,7 +335,6 @@ function App() {
             </div>
           ) : infoDigimon && (
             <div className="max-w-3xl mx-auto space-y-4 animate-fade-in">
-
             <div className="flex justify-start mb-2">
             <button onClick={volverALista} className="bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-2">
             <span>←</span> Volver a la lista
