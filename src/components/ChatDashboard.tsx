@@ -23,7 +23,7 @@ export default function ChatDashboard() {
   const [texto, setTexto] = useState("");
   const [miId] = useState(obtenerMiIdChat());
   const [miNombre, setMiNombre] = useState(obtenerMiNombreChat());
-  const [miDigimon] = useState(obtenerProgreso().digimon || null); // CAMBIO AQUÍ
+  const [miDigimon] = useState(obtenerProgreso().digimon || null);
   const listaRef = useRef<HTMLDivElement>(null);
   
   const [modoChat, setModoChat] = useState<"general" | "privado">("general");
@@ -120,7 +120,8 @@ export default function ChatDashboard() {
     if (listaRef.current) listaRef.current.scrollTop = listaRef.current.scrollHeight;
   }, [mensajes]);
 
-  const enviarSolicitud = async (autorId: string, autorNombre: string) => {
+  // CORRECCIÓN TS: Se eliminó 'autorNombre' de los parámetros porque no se usaba dentro de la función.
+  const enviarSolicitud = async (autorId: string) => {
     if (autorId === miId || bloqueados.includes(autorId)) return;
     playClickSound();
     const nuevaSolicitudRef = push(ref(db, `solicitudes/${autorId}`));
@@ -295,7 +296,8 @@ export default function ChatDashboard() {
           mensajes.map((msg) => (
             <div key={msg.id} className={`flex flex-col ${msg.autorId === miId ? "items-end" : "items-start"} group`}>
               <div className="flex items-center gap-1.5 mb-0.5">
-                <span onClick={() => msg.autorId !== miId && modoChat === "general" && enviarSolicitud(msg.autorId, msg.autorNombre)} className={`text-[9px] font-bold ${msg.autorId !== miId && modoChat === "general" ? "text-blue-400 hover:text-blue-300 cursor-pointer underline decoration-dotted" : "text-slate-500"}`}>{msg.autorNombre}</span>
+                {/* CORRECCIÓN TS: Se actualizó la llamada a enviarSolicitud para que solo envíe el ID */}
+                <span onClick={() => msg.autorId !== miId && modoChat === "general" && enviarSolicitud(msg.autorId)} className={`text-[9px] font-bold ${msg.autorId !== miId && modoChat === "general" ? "text-blue-400 hover:text-blue-300 cursor-pointer underline decoration-dotted" : "text-slate-500"}`}>{msg.autorNombre}</span>
                 {msg.digimon && <span className="text-[8px] bg-slate-800 text-blue-400 px-1 rounded">{msg.digimon}</span>}
                 
                 {msg.autorId === miId && (

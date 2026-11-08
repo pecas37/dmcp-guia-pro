@@ -31,7 +31,8 @@ const obtenerRequisito = (rama: string, etapa: string): string => {
 
   if (!columna) return "No definido";
   
-  const texto = limpiar(req[columna]);
+  // CORRECCIÓN TS ERROR 1: Se añade "as any" para que TS no proteste por el indexado dinámico
+  const texto = limpiar((req as any)[columna]);
   return texto || "No definido";
 };
 
@@ -64,29 +65,24 @@ FAMILIAS_SEGURAS.forEach(familia => {
     DIGIMONS_SEGUROS[familia][etapa] = [];
   });
 
-  // Filtramos solo las filas de esta familia que tengan nombre
   const filasFamilia = listaCompleta.filter(
     (d: any) => limpiar(d.Familia) === familia && limpiar(d.Digimon) !== ""
   );
 
-  // Agrupamos por nombre de Digimon
   const nombresUnicos = Array.from(new Set(filasFamilia.map((d: any) => limpiar(d.Digimon))));
 
   nombresUnicos.forEach(nombre => {
-    // Buscamos TODAS las filas de este Digimon en esta familia
     const filasDigimon = filasFamilia.filter((d: any) => limpiar(d.Digimon) === nombre);
     if (filasDigimon.length === 0) return;
 
     const primeraFila = filasDigimon[0];
     const etapa = limpiar(primeraFila.Etapa) || "Desconocida";
 
-    // Añadimos a la lista de la etapa (solo una vez por nombre)
     if (!DIGIMONS_SEGUROS[familia][etapa]) DIGIMONS_SEGUROS[familia][etapa] = [];
     if (!DIGIMONS_SEGUROS[familia][etapa].includes(nombre)) {
       DIGIMONS_SEGUROS[familia][etapa].push(nombre);
     }
 
-    // Pre-evoluciones: Buscamos todas las filas que evolucionan a este Digimon
     const preEvoluciones = listaCompleta
       .filter((d: any) => limpiar(d.Familia) === familia && limpiar(d["Evoluciona A"]) === nombre)
       .map((d: any) => ({
@@ -95,7 +91,6 @@ FAMILIAS_SEGURAS.forEach(familia => {
       }))
       .filter(p => p.nombre !== "");
 
-    // Evoluciones: Tomamos TODAS las filas de este Digimon que tengan "Evoluciona A"
     const evoluciones = filasDigimon
       .filter((d: any) => limpiar(d["Evoluciona A"]) !== "")
       .map((d: any) => ({
@@ -112,7 +107,6 @@ FAMILIAS_SEGURAS.forEach(familia => {
     };
   });
 
-  // Ordenamos las listas de cada etapa
   ETAPAS_SEGURAS.forEach(etapa => {
     if (DIGIMONS_SEGUROS[familia][etapa]) {
       DIGIMONS_SEGUROS[familia][etapa].sort((a, b) => a.localeCompare(b));

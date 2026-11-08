@@ -270,7 +270,6 @@ function App() {
             ) : infoDigimon && (
               <div className="max-w-3xl mx-auto space-y-4 animate-fade-in">
                 
-                {/* BOTÓN DE VOLVER AÑADIDO AQUÍ */}
                 <div className="flex justify-start mb-2">
                   <button onClick={volverALista} className="bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-2">
                     <span>←</span> Volver a la lista
@@ -287,7 +286,8 @@ function App() {
                   <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 border-b border-slate-800/50 pb-1">Pre-evoluciones</h3>
                   {infoDigimon.preEvoluciones.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5">
-                      {infoDigimon.preEvoluciones.map((pre: FichaDigimon, i: number) => (
+                      {/* CORRECCIÓN TS ERROR 3: Se tipó el parámetro 'pre' como any para evitar el error de inferencia */}
+                      {infoDigimon.preEvoluciones.map((pre: any, i: number) => (
                         <button key={i} onClick={() => { playClickSound(); setDigimonSeleccionado(pre.nombre); }} className="bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-blue-500/50 text-slate-300 px-2 py-1 rounded text-[10px] font-medium transition-all">{pre.nombre} (Rama {pre.rama})</button>
                       ))}
                     </div>
