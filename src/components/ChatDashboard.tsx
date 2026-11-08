@@ -4,7 +4,7 @@ import { ref, onValue, push, set, remove, query, orderByChild, limitToLast } fro
 import { playClickSound } from "../utils/sonidos";
 import { playNotificacionSound, mostrarNotificacion } from "../utils/notificaciones";
 import { 
-  obtenerMiDigimon, 
+  obtenerProgreso, 
   obtenerMiIdChat, 
   obtenerMiNombreChat, 
   guardarMiNombreChat,
@@ -23,7 +23,7 @@ export default function ChatDashboard() {
   const [texto, setTexto] = useState("");
   const [miId] = useState(obtenerMiIdChat());
   const [miNombre, setMiNombre] = useState(obtenerMiNombreChat());
-  const [miDigimon] = useState(obtenerMiDigimon());
+  const [miDigimon] = useState(obtenerProgreso().digimon || null); // CAMBIO AQUÍ
   const listaRef = useRef<HTMLDivElement>(null);
   
   const [modoChat, setModoChat] = useState<"general" | "privado">("general");
@@ -181,7 +181,6 @@ export default function ChatDashboard() {
     setMensajes([]);
   };
 
-  // FUNCIÓN PARA BORRAR UN MENSAJE INDIVIDUAL DE FIREBASE
   const borrarMensaje = async (mensajeId: string) => {
     if (!rutaMensajes) return;
     playClickSound();
@@ -299,13 +298,8 @@ export default function ChatDashboard() {
                 <span onClick={() => msg.autorId !== miId && modoChat === "general" && enviarSolicitud(msg.autorId, msg.autorNombre)} className={`text-[9px] font-bold ${msg.autorId !== miId && modoChat === "general" ? "text-blue-400 hover:text-blue-300 cursor-pointer underline decoration-dotted" : "text-slate-500"}`}>{msg.autorNombre}</span>
                 {msg.digimon && <span className="text-[8px] bg-slate-800 text-blue-400 px-1 rounded">{msg.digimon}</span>}
                 
-                {/* BOTÓN DE BORRAR MENSAJE INDIVIDUAL (SOLO SI ES TUYO) */}
                 {msg.autorId === miId && (
-                  <button 
-                    onClick={() => borrarMensaje(msg.id)} 
-                    className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
-                    title="Borrar mensaje"
-                  >
+                  <button onClick={() => borrarMensaje(msg.id)} className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" title="Borrar mensaje">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>

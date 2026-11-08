@@ -1,8 +1,34 @@
-// --- DIGIMON ASIGNADO ---
-export const obtenerMiDigimon = () => localStorage.getItem("dmpc_mi_digimon") || null;
+// --- DIGIMON ASIGNADO Y PROGRESO ---
+export const obtenerProgreso = () => {
+  const progreso = localStorage.getItem("dmpc_progreso");
+  return progreso ? JSON.parse(progreso) : {
+    digimon: "",
+    familia: "",
+    etapa: "",
+    entrenamientos: 0,
+    batallas: 0,
+    victorias: 0,
+    errores: 0,
+    atk: 0,
+    def: 0,
+    dex: 0,
+    peso: 0,
+    edad: 0,
+    luz: "Encendida",
+    animo: "Alegre"
+  };
+};
+
+export const guardarProgreso = (progreso: any) => {
+  localStorage.setItem("dmpc_progreso", JSON.stringify(progreso));
+};
+
+// Compatibilidad con el código antiguo
+export const obtenerMiDigimon = () => obtenerProgreso().digimon || null;
 export const guardarMiDigimon = (nombre: string | null) => {
-  if (nombre) localStorage.setItem("dmpc_mi_digimon", nombre);
-  else localStorage.removeItem("dmpc_mi_digimon");
+  const p = obtenerProgreso();
+  p.digimon = nombre || "";
+  guardarProgreso(p);
 };
 
 // --- HISTORIAL / LOGS ---
@@ -39,7 +65,6 @@ export const obtenerMiIdChat = () => {
 export const obtenerMiNombreChat = () => localStorage.getItem("dmpc_chat_nombre") || "";
 export const guardarMiNombreChat = (nombre: string) => localStorage.setItem("dmpc_chat_nombre", nombre);
 
-// --- BLOQUEOS Y MENSAJES OCULTOS ---
 export const obtenerUsuariosBloqueados = () => {
   const bloqueados = localStorage.getItem("dmpc_chat_bloqueados");
   return bloqueados ? JSON.parse(bloqueados) : [];
@@ -55,13 +80,11 @@ export const desbloquearUsuario = (id: string) => {
   return nuevos;
 };
 
-// NUEVO: Ocultar mensajes (para no borrar los del otro)
 export const ocultarMensajesHasta = (sala: string, timestamp: number) => {
   const ocultos = JSON.parse(localStorage.getItem("dmpc_msgs_ocultos") || "{}");
   ocultos[sala] = timestamp;
   localStorage.setItem("dmpc_msgs_ocultos", JSON.stringify(ocultos));
 };
-
 export const obtenerTimestampOculto = (sala: string) => {
   const ocultos = JSON.parse(localStorage.getItem("dmpc_msgs_ocultos") || "{}");
   return ocultos[sala] || 0;

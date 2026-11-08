@@ -1,34 +1,35 @@
 import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { familias, requisitos, listaCompleta } from "./data/digimonData"; 
 import { playClickSound } from "./utils/sonidos";
-import { obtenerMiDigimon, guardarMiDigimon, obtenerLogs, agregarLog, borrarLogs } from "./utils/almacenamiento";
-import Temporizador from "./components/Temporizador";
-import SimuladorDashboard from "./components/SimuladorDashboard";
+import { obtenerProgreso, guardarProgreso, obtenerLogs, agregarLog, borrarLogs } from "./utils/almacenamiento";
+import { 
+  FAMILIAS_SEGURAS, 
+  ETAPAS_SEGURAS, 
+  DIGIMONS_SEGUROS, 
+  obtenerFichasDeDigimon, 
+  obtenerPreEvoluciones,
+  FichaDigimon
+} from "./utils/motorDatos";
 import NotasDashboard from "./components/NotasDashboard";
 import ChatDashboard from "./components/ChatDashboard";
+import MiProgreso from "./components/MiProgreso";
 
-const ORDEN_ETAPAS = ["BB1", "BB2", "CHILD", "ADULT", "PERFECT", "ULTIMATE", "SUPER ULTIMATE"];
-const normalizarNombre = (nombre: string) => nombre ? nombre.trim().toLowerCase() : "";
-
-type Vista = "guia" | "simulador" | "notas" | "historial" | "chat";
+type Vista = "guia" | "miProgreso" | "notas" | "historial" | "chat";
 
 function App() {
   const [vistaActiva, setVistaActiva] = useState<Vista>("guia");
-  const [familiaActiva, setFamiliaActiva] = useState(familias[0] || "DEEP SAVERS");
+  const [familiaActiva, setFamiliaActiva] = useState(FAMILIAS_SEGURAS[0] || "DEEP SAVERS");
   const [digimonSeleccionado, setDigimonSeleccionado] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [menuAbierto, setMenuAbierto] = useState(false);
 
-  const [miDigimon, setMiDigimon] = useState<string | null>(null);
+  const [progreso, setProgreso] = useState(obtenerProgreso());
   const [logs, setLogs] = useState<any[]>([]);
-  
-  // Estados para el Toast
   const [mensajeToast, setMensajeToast] = useState<string | null>(null);
-  const [visible, setVisible] = useState(false); // Controla la animación
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    setMiDigimon(obtenerMiDigimon());
+    setProgreso(obtenerProgreso());
     setLogs(obtenerLogs());
   }, []);
 
@@ -47,14 +48,11 @@ function App() {
     } catch (e) { console.log("Botón atrás no disponible."); }
   }, [menuAbierto, digimonSeleccionado, vistaActiva]);
 
-  // Función mejorada para mostrar y ocultar el toast
   const mostrarToast = (mensaje: string) => {
     setMensajeToast(mensaje);
     setVisible(true);
-    // Después de 3 segundos, iniciamos la animación de salida
     setTimeout(() => {
       setVisible(false);
-      // Después de 0.4s (la duración de la animación de salida), limpiamos el mensaje
       setTimeout(() => setMensajeToast(null), 400);
     }, 3000);
   };
@@ -71,63 +69,58 @@ function App() {
     setBusqueda(texto);
     setDigimonSeleccionado(null);
     setVistaActiva("guia");
-    if (texto.length > 2) {
-      agregarLog("Búsqueda", `Buscó: "${texto}"`);
-      setLogs(obtenerLogs());
-    }
   };
 
-  const digimonsAgrupados = useMemo(() => {
-    let filtrados = listaCompleta;
-    if (busqueda.trim() !== "") {
-      const term = busqueda.trim().toLowerCase();
-      filtrados = listaCompleta.filter((d: any) => d.Digimon.toLowerCase().includes(term));
-    } else {
-      filtrados = listaCompleta.filter((d: any) => d.Familia === familiaActiva);
+  const digimonsFiltrados = useMemo(() => {
+    if (busqueda.trim() === "") {
+      return DIGIMONS_SEGUROS[familiaActiva] || {};
     }
-    return ORDEN_ETAPAS.reduce((acc: any, etapa) => {
-      const digisDeEtapa = Array.from(new Set(filtrados.filter((d: any) => d.Etapa === etapa).map((d: any) => d.Digimon)));
-      if (digisDeEtapa.length > 0) acc[etapa] = digisDeEtapa.sort((a: any, b: any) => a.localeCompare(b));
-      return acc;
-    }, {});
+    
+    const term = busqueda.trim().toLowerCase();
+    const resultado: Record<string, string[]> = {};
+    
+    FAMILIAS_SEGURAS.forEach(familia => {
+      const etapas = DIGIMONS_SEGUROS[familia];
+      if (!etapas) return;
+      
+      Object.entries(etapas).forEach(([etapa, digimons]) => {
+        const filtrados = digimons.filter((d: string) => d.toLowerCase().includes(term));
+        if (filtrados.length > 0) {
+          if (!resultado[etapa]) resultado[etapa] = [];
+          resultado[etapa] = [...resultado[etapa], ...filtrados];
+        }
+      });
+    });
+    
+    Object.keys(resultado).forEach(etapa => {
+      resultado[etapa] = Array.from(new Set(resultado[etapa])).sort();
+    });
+    
+    return resultado;
   }, [familiaActiva, busqueda]);
 
   const infoDigimon = useMemo(() => {
     if (!digimonSeleccionado) return null;
-    const nombreNorm = normalizarNombre(digimonSeleccionado);
-    const filasDigimon = listaCompleta.filter((d: any) => normalizarNombre(d.Digimon) === nombreNorm);
-    if (filasDigimon.length === 0) return null;
-
-    const filaPrincipal = filasDigimon.find((f: any) => f.Familia === familiaActiva) || filasDigimon[0];
-    const etapaActual = filaPrincipal.Etapa;
-    const familiaReal = filaPrincipal.Familia;
-
-    const preEvoluciones = listaCompleta.filter((d: any) => d.Familia === familiaReal && normalizarNombre(d["Evoluciona A"]) === nombreNorm);
     
-    const evoluciones = listaCompleta
-      .filter((fila: any) => fila.Familia === familiaReal && normalizarNombre(fila.Digimon) === nombreNorm)
-      .filter((fila: any) => fila["Evoluciona A"] && fila["Evoluciona A"].trim() !== "")
-      .map((fila: any) => {
-        const req = requisitos.find((r: any) => r.RAMA === fila.Rama);
-        let col = "";
-        if (etapaActual === "BB1") col = "De BB1 a BB2";
-        else if (etapaActual === "BB2") col = "De BB2 a CHILD";
-        else if (etapaActual === "CHILD") col = "De CHILD a ADULT";
-        else if (etapaActual === "ADULT") col = "De ADULT a PERFECT";
-        else if (etapaActual === "PERFECT") col = "De PERFECT a ULTIMATE";
-        else if (etapaActual === "ULTIMATE") col = "De ULTIMATE a SUPER ULTIMATE";
-        return { rama: fila.Rama, evolucionaA: fila["Evoluciona A"], requisito: req ? (req as any)[col] : "No definido" };
-      });
-    return { etapa: etapaActual, familia: familiaReal, preEvoluciones, evoluciones };
+    const fichas = obtenerFichasDeDigimon(familiaActiva, digimonSeleccionado);
+    if (fichas.length === 0) return null;
+
+    const etapa = fichas[0].etapa;
+    const preEvoluciones = obtenerPreEvoluciones(familiaActiva, digimonSeleccionado);
+    const evoluciones = fichas.filter(f => f.evolucionaA !== "");
+
+    return { etapa, preEvoluciones, evoluciones };
   }, [digimonSeleccionado, familiaActiva]);
 
   const volverALista = () => { playClickSound(); setDigimonSeleccionado(null); setBusqueda(""); };
 
   const asignarMiDigimon = () => {
-    if (digimonSeleccionado) {
+    if (digimonSeleccionado && infoDigimon) {
       playClickSound();
       agregarLog("Asignación", `Asignó a ${digimonSeleccionado}`);
-      guardarMiDigimon(digimonSeleccionado); setMiDigimon(digimonSeleccionado);
+      const nuevoProgreso = { ...progreso, digimon: digimonSeleccionado, familia: familiaActiva, etapa: infoDigimon.etapa };
+      guardarProgreso(nuevoProgreso);
+      setProgreso(nuevoProgreso);
       setLogs(obtenerLogs());
       volverALista();
     }
@@ -136,7 +129,9 @@ function App() {
   const borrarMiDigimon = () => {
     playClickSound();
     agregarLog("Asignación", `Borró su Digimon`);
-    guardarMiDigimon(null); setMiDigimon(null);
+    const nuevoProgreso = { ...progreso, digimon: "", familia: "", etapa: "" };
+    guardarProgreso(nuevoProgreso);
+    setProgreso(nuevoProgreso);
     setLogs(obtenerLogs());
     volverALista();
   };
@@ -149,8 +144,8 @@ function App() {
 
   const irAMiRuta = () => {
     playClickSound();
-    if (!miDigimon) return mostrarToast("Por favor, asigna un Digimon primero.");
-    setVistaActiva("guia"); setBusqueda(""); setDigimonSeleccionado(miDigimon);
+    if (!progreso.digimon) return mostrarToast("Por favor, asigna un Digimon primero.");
+    setVistaActiva("guia"); setBusqueda(""); setDigimonSeleccionado(progreso.digimon);
     setMenuAbierto(false);
   };
 
@@ -178,13 +173,8 @@ function App() {
       }}
     >
       
-      {/* TOAST CON ANIMACIÓN DE ENTRADA Y SALIDA LATERAL */}
       {mensajeToast && createPortal(
-        <div 
-          className={`fixed top-4 right-4 z-[9999] pointer-events-none ${
-            visible ? "animate-slide-in-right" : "animate-slide-out-right"
-          }`}
-        >
+        <div className={`fixed top-4 right-4 z-[9999] pointer-events-none ${visible ? "animate-slide-in-right" : "animate-slide-out-right"}`}>
           <div className="bg-slate-800 border border-blue-500/50 text-white px-4 py-2 rounded-lg shadow-[0_0_20px_rgba(59,130,246,0.5)] flex items-center gap-2 max-w-[90vw] pointer-events-auto">
             <span className="text-lg flex-shrink-0">ℹ️</span>
             <p className="text-sm font-medium break-words">{mensajeToast}</p>
@@ -205,18 +195,18 @@ function App() {
         ${menuAbierto ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       `}>
         <div className="p-3 border-b border-blue-500/20 flex justify-between items-center">
-          <h1 className="text-lg font-bold text-white tracking-widest uppercase text-glow cursor-pointer" onClick={() => { volverALista(); setMenuAbierto(false); }}>DMPC <span className="text-blue-400">PRO</span></h1>
+          <h1 className="text-sm font-bold text-white tracking-widest uppercase text-glow cursor-pointer" onClick={() => { volverALista(); setMenuAbierto(false); }}>DMPC GUIA <span className="text-blue-400">PRO</span></h1>
           <button className="md:hidden text-slate-400 hover:text-white" onClick={() => setMenuAbierto(false)}>✕</button>
         </div>
         <div className="flex-1 py-3 space-y-1 px-2 overflow-y-auto custom-scrollbar">
           <button onClick={() => cambiarVista("guia")} className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm font-bold transition-all ${vistaActiva === "guia" ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}>📖 Guía</button>
-          <button onClick={() => cambiarVista("simulador")} className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm font-bold transition-all ${vistaActiva === "simulador" ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}>⚔️ Simulador</button>
+          <button onClick={() => cambiarVista("miProgreso")} className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm font-bold transition-all ${vistaActiva === "miProgreso" ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}>📊 Mi Progreso</button>
           <button onClick={() => cambiarVista("notas")} className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm font-bold transition-all ${vistaActiva === "notas" ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}>📝 Notas</button>
           <button onClick={() => cambiarVista("historial")} className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm font-bold transition-all ${vistaActiva === "historial" ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}>📅 Historial</button>
           <button onClick={() => cambiarVista("chat")} className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm font-bold transition-all ${vistaActiva === "chat" ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}>💬 Chat</button>
         </div>
-        <div className="p-3 border-t border-blue-500/20">
-          <Temporizador />
+        <div className="p-3 border-t border-blue-500/20 text-center">
+          <p className="text-[10px] text-slate-500">DMPC GUIA PRO v1.0</p>
         </div>
       </div>
 
@@ -235,8 +225,8 @@ function App() {
             </div>
             
             <div className="flex items-center gap-1 ml-auto">
-              <button onClick={irAMiRuta} className={`px-2 py-1 rounded text-[10px] font-bold border ${miDigimon ? "bg-blue-600/20 text-blue-400 border-blue-500/50" : "bg-slate-800/50 text-slate-600 border-slate-800"}`}>🎯 Mi Ruta</button>
-              {miDigimon && <button onClick={borrarMiDigimon} className="px-2 py-1 rounded text-[10px] font-bold border bg-red-600/20 text-red-400 border-red-500/50">❌</button>}
+              <button onClick={irAMiRuta} className={`px-2 py-1 rounded text-[10px] font-bold border ${progreso.digimon ? "bg-blue-600/20 text-blue-400 border-blue-500/50" : "bg-slate-800/50 text-slate-600 border-slate-800"}`}>🎯 Mi Ruta</button>
+              {progreso.digimon && <button onClick={borrarMiDigimon} className="px-2 py-1 rounded text-[10px] font-bold border bg-red-600/20 text-red-400 border-red-500/50">❌</button>}
             </div>
           </div>
         </div>
@@ -249,42 +239,56 @@ function App() {
                   <div className="animate-slide-up">
                     <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 text-glow">Selecciona Familia</h2>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-1.5">
-                      {familias.map((f: string) => (
+                      {FAMILIAS_SEGURAS.map((f: string) => (
                         <button key={f} onClick={() => { playClickSound(); setFamiliaActiva(f); setDigimonSeleccionado(null); }} className={`px-1 py-2 rounded text-[10px] md:text-[9px] font-bold transition-all border text-center truncate ${familiaActiva === f ? "bg-blue-600 border-blue-500 text-white shadow-[0_0_10px_rgba(37,99,235,0.3)]" : "bg-slate-900/60 border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}>{f}</button>
                       ))}
                     </div>
                   </div>
                 )}
                 <div className="space-y-4">
-                  {Object.entries(digimonsAgrupados).map(([etapa, digimons], idx) => (
-                    <div key={etapa} className="animate-slide-up" style={{ animationDelay: `${idx * 30}ms` }}>
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest uppercase border ${getEtapaColor(etapa)}`}>{etapa}</span>
-                        <div className="h-px bg-gradient-to-r from-blue-500/20 to-transparent flex-1"></div>
+                  {ETAPAS_SEGURAS.map((etapa) => {
+                    const digimons = digimonsFiltrados[etapa] || [];
+                    if (digimons.length === 0) return null;
+                    
+                    return (
+                      <div key={etapa} className="animate-slide-up">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest uppercase border ${getEtapaColor(etapa)}`}>{etapa}</span>
+                          <div className="h-px bg-gradient-to-r from-blue-500/20 to-transparent flex-1"></div>
+                          <span className="text-[8px] text-slate-600 font-medium">{digimons.length} Digimon(s)</span>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-1.5">
+                          {digimons.map((digi: string) => (
+                            <button key={digi} onClick={() => { playClickSound(); setDigimonSeleccionado(digi); }} className="cyber-card bg-slate-900/40 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-800/80 text-slate-300 px-2 py-2 rounded text-xs md:text-[11px] font-medium transition-all text-center truncate group relative overflow-hidden">{digi}</button>
+                          ))}
+                        </div>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-1.5">
-                        {(digimons as string[]).map((digi) => (
-                          <button key={digi} onClick={() => { playClickSound(); setDigimonSeleccionado(digi); }} className="cyber-card bg-slate-900/40 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-800/80 text-slate-300 px-2 py-2 rounded text-xs md:text-[11px] font-medium transition-all text-center truncate group relative overflow-hidden">{digi}</button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : infoDigimon && (
               <div className="max-w-3xl mx-auto space-y-4 animate-fade-in">
+                
+                {/* BOTÓN DE VOLVER AÑADIDO AQUÍ */}
+                <div className="flex justify-start mb-2">
+                  <button onClick={volverALista} className="bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-2">
+                    <span>←</span> Volver a la lista
+                  </button>
+                </div>
+
                 <div className="flex justify-center"><button onClick={asignarMiDigimon} className="bg-yellow-600/20 hover:bg-yellow-600 text-yellow-400 hover:text-white border border-yellow-500/50 px-4 py-1.5 rounded-full text-[10px] md:text-xs font-bold transition-all flex items-center gap-1">⭐ ASIGNAR COMO MI DIGIMON ⭐</button></div>
                 <div className="flex flex-col items-center gap-1.5">
                   <span className={`px-3 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase border ${getEtapaColor(infoDigimon.etapa)}`}>Etapa: {infoDigimon.etapa}</span>
-                  <span className="text-[9px] text-slate-500 uppercase tracking-widest">{infoDigimon.familia}</span>
+                  <span className="text-[9px] text-slate-500 uppercase tracking-widest">{familiaActiva}</span>
                 </div>
                 
                 <div>
                   <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 border-b border-slate-800/50 pb-1">Pre-evoluciones</h3>
                   {infoDigimon.preEvoluciones.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5">
-                      {infoDigimon.preEvoluciones.map((pre: any, i: number) => (
-                        <button key={i} onClick={() => { playClickSound(); setDigimonSeleccionado(pre.Digimon); }} className="bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-blue-500/50 text-slate-300 px-2 py-1 rounded text-[10px] font-medium transition-all">{pre.Digimon}</button>
+                      {infoDigimon.preEvoluciones.map((pre: FichaDigimon, i: number) => (
+                        <button key={i} onClick={() => { playClickSound(); setDigimonSeleccionado(pre.nombre); }} className="bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-blue-500/50 text-slate-300 px-2 py-1 rounded text-[10px] font-medium transition-all">{pre.nombre} (Rama {pre.rama})</button>
                       ))}
                     </div>
                   ) : (<p className="text-slate-500 italic text-[10px] bg-slate-900/30 p-2 rounded border border-slate-800/50">Etapa inicial (Baby).</p>)}
@@ -294,8 +298,8 @@ function App() {
                   <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 border-b border-slate-800/50 pb-1">Evoluciones Posibles</h3>
                   {infoDigimon.evoluciones.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {infoDigimon.evoluciones.map((evo: any, i: number) => {
-                        const listaReq = evo.requisito === "No Tiene" ? [] : evo.requisito.split(';');
+                      {infoDigimon.evoluciones.map((evo: FichaDigimon, i: number) => {
+                        const listaReq = evo.requisito === "No Tiene" || evo.requisito === "No definido" ? [] : evo.requisito.split(';');
                         return (
                           <div key={i} className="cyber-card bg-slate-900/60 rounded-lg border border-slate-800/80 p-2.5 shadow-md flex flex-col hover:border-blue-500/40 transition-all">
                             <div className="flex justify-between items-start mb-1.5">
@@ -319,7 +323,7 @@ function App() {
             )
           )}
 
-          {vistaActiva === "simulador" && <SimuladorDashboard />}
+          {vistaActiva === "miProgreso" && <MiProgreso />}
           {vistaActiva === "notas" && <NotasDashboard />}
           {vistaActiva === "chat" && <ChatDashboard />}
           {vistaActiva === "historial" && (
