@@ -775,7 +775,7 @@ function App() {
                       rel="noreferrer"
                       className="text-blue-400 hover:text-blue-300 underline underline-offset-4 font-medium flex items-center gap-2"
                     >
-                      Servidor de Discord DMPC PRO
+                      Servidor de Discord DMPC GUIA PRO
                     </a>
                   </div>
 
