@@ -83,6 +83,11 @@
   animation: slideOutRight 0.4s ease-in forwards;
 }
 
+@keyframes loading {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(0); }
+}
+
 /* =========================================
    SCROLLBAR
    ========================================= */

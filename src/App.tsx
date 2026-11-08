@@ -16,10 +16,12 @@ import {
 import NotasDashboard from "./components/NotasDashboard";
 import ChatDashboard from "./components/ChatDashboard";
 import MiProgreso from "./components/MiProgreso";
+import SplashScreen from "./components/SplashScreen"; // <-- NUEVO IMPORT
 
-type Vista = "guia" | "miProgreso" | "notas" | "historial" | "chat";
+type Vista = "guia" | "miProgreso" | "notas" | "historial" | "chat" | "creditos"; // <-- AÑADIDO "creditos"
 
 function App() {
+  const [mostrarSplash, setMostrarSplash] = useState(true); // <-- NUEVO ESTADO
   const [vistaActiva, setVistaActiva] = useState<Vista>("guia");
   const [familiaActiva, setFamiliaActiva] = useState(FAMILIAS_SEGURAS[0] || "DEEP SAVERS");
   const [digimonSeleccionado, setDigimonSeleccionado] = useState<string | null>(null);
@@ -35,7 +37,6 @@ function App() {
   const miIdGlobal = obtenerMiIdChat();
   
   useEffect(() => {
-    // 1. Escuchamos solicitudes de chat nuevas
     const solicitudesRef = ref(db, `solicitudes/${miIdGlobal}`);
     const unsubscribeSolicitudes = onValue(solicitudesRef, (snapshot) => {
       const data = snapshot.val();
@@ -49,7 +50,6 @@ function App() {
       }
     });
 
-    // 2. Escuchamos si alguien acepta nuestra solicitud
     const misEnviosRef = ref(db, `solicitudes_enviadas/${miIdGlobal}`);
     const unsubscribeAceptadas = onValue(misEnviosRef, (snapshot) => {
       const data = snapshot.val();
@@ -63,7 +63,6 @@ function App() {
       }
     });
 
-    // 3. Escuchamos los mensajes privados guardados
     const conversacionesGuardadas = JSON.parse(localStorage.getItem("dmpc_chat_conversaciones") || "[]");
     const unsubscribesMensajes: (() => void)[] = [];
     
@@ -97,13 +96,11 @@ function App() {
     };
   }, [miIdGlobal]);
 
-  // Escuchar el evento global para mostrar Toasts desde ChatDashboard
   useEffect(() => {
     const handleToast = (e: any) => mostrarToastGlobal(e.detail);
     window.addEventListener('dmpc-toast', handleToast);
     return () => window.removeEventListener('dmpc-toast', handleToast);
   }, []);
-  // -----------------------------------------------
 
   useEffect(() => {
     setProgreso(obtenerProgreso());
@@ -239,6 +236,11 @@ function App() {
     }
   };
 
+  // PANTALLA DE SPLASH
+  if (mostrarSplash) {
+    return <SplashScreen onFinish={() => setMostrarSplash(false)} />;
+  }
+
   return (
     <div 
       className="h-screen w-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black font-sans text-slate-200 flex overflow-hidden relative"
@@ -281,6 +283,7 @@ function App() {
           <button onClick={() => cambiarVista("notas")} className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm font-bold transition-all ${vistaActiva === "notas" ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}>📝 Notas</button>
           <button onClick={() => cambiarVista("historial")} className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm font-bold transition-all ${vistaActiva === "historial" ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}>📅 Historial</button>
           <button onClick={() => cambiarVista("chat")} className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm font-bold transition-all ${vistaActiva === "chat" ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}>💬 Chat</button>
+          <button onClick={() => cambiarVista("creditos")} className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm font-bold transition-all ${vistaActiva === "creditos" ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"}`}>👨‍💻 Créditos</button>
         </div>
         <div className="p-3 border-t border-blue-500/20 text-center">
           <p className="text-[10px] text-slate-500">DMPC GUIA PRO v1.0</p>
@@ -430,8 +433,57 @@ function App() {
             </div>
           </div>
 
+          {/* VISTA CHAT */}
           <div style={{ display: vistaActiva === "chat" ? "block" : "none", height: "100%" }}>
             <ChatDashboard />
+          </div>
+
+          {/* NUEVA VISTA CRÉDITOS */}
+          <div style={{ display: vistaActiva === "creditos" ? "block" : "none" }}>
+            <div className="max-w-2xl mx-auto space-y-6 animate-fade-in text-center mt-10">
+              
+              <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500"></div>
+                
+                <h2 className="text-3xl font-black text-white tracking-widest uppercase text-glow mb-2">
+                  DMPC GUIA <span className="text-blue-400">PRO</span>
+                </h2>
+                <p className="text-slate-400 text-sm mb-6">Tu compañero definitivo para el Digimon Pendulum Color.</p>
+                
+                <div className="space-y-4 text-sm text-slate-300">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Desarrollado por</span>
+                    <span className="text-lg font-bold text-white">Hernán Martínez</span>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Contacto / Soporte</span>
+                    <a href="mailto:tu-correo@ejemplo.com" className="text-blue-400 hover:text-blue-300 underline underline-offset-4">
+                      tu-correo@ejemplo.com
+                    </a>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Comunidad</span>
+                    <a href="https://github.com/pecas37/dmcp-guia" target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 underline underline-offset-4">
+                      GitHub del Proyecto
+                    </a>
+                  </div>
+                </div>
+
+                <div className="mt-8 pt-4 border-t border-slate-800/50">
+                  <p className="text-[10px] text-slate-500 leading-relaxed">
+                    Todos los derechos reservados. Este es un proyecto de código abierto creado por fans.<br/>
+                    Digimon y todas las imágenes asociadas son marcas registradas de Bandai / Toei Animation.<br/>
+                    Esta aplicación no tiene fines de lucro y no está afiliada a Bandai.
+                  </p>
+                  <p className="text-[10px] text-slate-600 font-bold mt-2">
+                    © {new Date().getFullYear()} DMPC GUIA PRO
+                  </p>
+                </div>
+              </div>
+
+            </div>
           </div>
 
         </div>
