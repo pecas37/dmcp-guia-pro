@@ -42,6 +42,18 @@ type Vista =
   | "chat"
   | "creditos";
 
+// FUNCIÓN GLOBAL PARA ABRIR ENLACES EXTERNOS (COMPATIBLE CON TAURI Y NAVEGADOR)
+const abrirEnlace = async (url: string) => {
+  try {
+    // Intentamos usar el plugin de Tauri
+    const { open } = await import("@tauri-apps/plugin-shell");
+    await open(url);
+  } catch (error) {
+    // Si no estamos en Tauri (ej. en el navegador), usamos el window.open normal
+    window.open(url, "_blank");
+  }
+};
+
 function App() {
   const [mostrarSplash, setMostrarSplash] = useState(true);
   const [vistaActiva, setVistaActiva] = useState<Vista>("guia");
@@ -730,7 +742,6 @@ function App() {
           </div>
 
           {/* NUEVA VISTA CRÉDITOS */}
-          {/* NUEVA VISTA CRÉDITOS */}
           <div
             style={{ display: vistaActiva === "creditos" ? "block" : "none" }}
           >
@@ -769,28 +780,28 @@ function App() {
                     <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
                       Comunidad (Soporte y Ayuda)
                     </span>
-                    <a
-                      href="https://discord.gg/Jr2BVJ4Hgc" // <-- CAMBIA ESTO POR EL LINK DE TU SERVIDOR
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-blue-400 hover:text-blue-300 underline underline-offset-4 font-medium flex items-center gap-2"
+                    <button
+                      onClick={() =>
+                        abrirEnlace("https://discord.gg/Jr2BVJ4Hgc")
+                      } // <-- ENLACE DE TU SERVIDOR
+                      className="text-blue-400 hover:text-blue-300 underline underline-offset-4 font-medium flex items-center gap-2 cursor-pointer"
                     >
                       Servidor de Discord DMPC GUIA PRO
-                    </a>
+                    </button>
                   </div>
 
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
                       Contacto Directo
                     </span>
-                    <a
-                      href="https://discord.com/users/desertorh" // <-- CAMBIA ESTO POR TU ID DE DISCORD (O tu enlace de perfil)
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-indigo-400 hover:text-indigo-300 underline underline-offset-4 font-medium flex items-center gap-2"
+                    <button
+                      onClick={() =>
+                        abrirEnlace("https://discord.com/users/desertorh")
+                      } // <-- ENLACE DE TU PERFIL
+                      className="text-indigo-400 hover:text-indigo-300 underline underline-offset-4 font-medium flex items-center gap-2 cursor-pointer"
                     >
                       Perfil de Discord: Desertor H
-                    </a>
+                    </button>
                   </div>
                 </div>
 
