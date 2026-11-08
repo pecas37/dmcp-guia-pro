@@ -1,7 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { db } from "./utils/firebase"; // IMPORTANTE: Importar Firebase aquí
+import { ref, query, orderByChild, limitToLast, onValue } from "firebase/database"; // IMPORTANTE
 import { playClickSound } from "./utils/sonidos";
-import { obtenerProgreso, guardarProgreso, obtenerLogs, agregarLog, borrarLogs } from "./utils/almacenamiento";
+import { playNotificacionSound, mostrarNotificacion } from "./utils/notificaciones"; // IMPORTANTE
+import { obtenerProgreso, guardarProgreso, obtenerLogs, agregarLog, borrarLogs, obtenerMiIdChat } from "./utils/almacenamiento";
 import { 
   FAMILIAS_SEGURAS, 
   ETAPAS_SEGURAS, 
@@ -28,6 +31,35 @@ function App() {
   const [mensajeToast, setMensajeToast] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
 
+  // --- LÓGICA GLOBAL DE NOTIFICACIONES ---
+  const miIdGlobal = obtenerMiIdChat();
+  
+  useEffect(() => {
+    // Escuchamos los últimos mensajes del chat general
+    const q = query(ref(db, 'chat/general'), orderByChild('timestamp'), limitToLast(1));
+    let primerCarga = true;
+
+    const unsubscribe = onValue(q, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const lista = Object.values(data) as any[];
+        const ultimo = lista[0];
+        
+        if (ultimo && ultimo.autorId !== miIdGlobal) {
+          // Evitamos notificar el mensaje que ya existía al abrir la app
+          if (!primerCarga) {
+            playNotificacionSound();
+            mostrarNotificacion("Nuevo mensaje en DMPC PRO", `${ultimo.autorNombre}: ${ultimo.texto}`);
+            mostrarToastGlobal(`💬 ${ultimo.autorNombre}: ${ultimo.texto}`);
+          }
+        }
+      }
+      primerCarga = false;
+    });
+    return () => unsubscribe();
+  }, [miIdGlobal]);
+  // ---------------------------------------
+
   useEffect(() => {
     setProgreso(obtenerProgreso());
     setLogs(obtenerLogs());
@@ -48,7 +80,7 @@ function App() {
     } catch (e) { console.log("Botón atrás no disponible."); }
   }, [menuAbierto, digimonSeleccionado, vistaActiva]);
 
-  const mostrarToast = (mensaje: string) => {
+  const mostrarToastGlobal = (mensaje: string) => {
     setMensajeToast(mensaje);
     setVisible(true);
     setTimeout(() => {
@@ -139,12 +171,12 @@ function App() {
   const limpiarHistorial = () => {
     playClickSound();
     borrarLogs(); setLogs([]);
-    mostrarToast("Historial limpiado.");
+    mostrarToastGlobal("Historial limpiado.");
   };
 
   const irAMiRuta = () => {
     playClickSound();
-    if (!progreso.digimon) return mostrarToast("Por favor, asigna un Digimon primero.");
+    if (!progreso.digimon) return mostrarToastGlobal("Por favor, asigna un Digimon primero.");
     setVistaActiva("guia"); setBusqueda(""); setDigimonSeleccionado(progreso.digimon);
     setMenuAbierto(false);
   };
@@ -286,7 +318,6 @@ function App() {
                   <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 border-b border-slate-800/50 pb-1">Pre-evoluciones</h3>
                   {infoDigimon.preEvoluciones.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5">
-                      {/* CORRECCIÓN TS ERROR 3: Se tipó el parámetro 'pre' como any para evitar el error de inferencia */}
                       {infoDigimon.preEvoluciones.map((pre: any, i: number) => (
                         <button key={i} onClick={() => { playClickSound(); setDigimonSeleccionado(pre.nombre); }} className="bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-blue-500/50 text-slate-300 px-2 py-1 rounded text-[10px] font-medium transition-all">{pre.nombre} (Rama {pre.rama})</button>
                       ))}

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { db } from "../utils/firebase";
 import { ref, onValue, push, set, remove, query, orderByChild, limitToLast } from "firebase/database";
 import { playClickSound } from "../utils/sonidos";
-import { playNotificacionSound, mostrarNotificacion } from "../utils/notificaciones";
+import { playNotificacionSound } from "../utils/notificaciones";
 import { 
   obtenerProgreso, 
   obtenerMiIdChat, 
@@ -80,21 +80,11 @@ export default function ChatDashboard() {
         if (ocultoHasta > 0) {
           lista = lista.filter(m => m.timestamp > ocultoHasta);
         }
-
-        const ultimoMensaje = lista[lista.length - 1];
-        if (ultimoMensaje && ultimoMensaje.autorId !== miId) {
-          const isNew = !mensajes.find(m => m.id === ultimoMensaje.id);
-          if (isNew) {
-            playNotificacionSound();
-            mostrarNotificacion("Nuevo mensaje en DMPC PRO", `${ultimoMensaje.autorNombre}: ${ultimoMensaje.texto}`);
-          }
-        }
-
         setMensajes(lista);
       } else { setMensajes([]); }
     });
     return () => unsubscribe();
-  }, [rutaMensajes, modoChat, miId, mensajes]);
+  }, [rutaMensajes, modoChat, miId]);
 
   useEffect(() => {
     if (!miId) return;
@@ -120,7 +110,6 @@ export default function ChatDashboard() {
     if (listaRef.current) listaRef.current.scrollTop = listaRef.current.scrollHeight;
   }, [mensajes]);
 
-  // CORRECCIÓN TS: Se eliminó 'autorNombre' de los parámetros porque no se usaba dentro de la función.
   const enviarSolicitud = async (autorId: string) => {
     if (autorId === miId || bloqueados.includes(autorId)) return;
     playClickSound();
@@ -296,19 +285,23 @@ export default function ChatDashboard() {
           mensajes.map((msg) => (
             <div key={msg.id} className={`flex flex-col ${msg.autorId === miId ? "items-end" : "items-start"} group`}>
               <div className="flex items-center gap-1.5 mb-0.5">
-                {/* CORRECCIÓN TS: Se actualizó la llamada a enviarSolicitud para que solo envíe el ID */}
                 <span onClick={() => msg.autorId !== miId && modoChat === "general" && enviarSolicitud(msg.autorId)} className={`text-[9px] font-bold ${msg.autorId !== miId && modoChat === "general" ? "text-blue-400 hover:text-blue-300 cursor-pointer underline decoration-dotted" : "text-slate-500"}`}>{msg.autorNombre}</span>
                 {msg.digimon && <span className="text-[8px] bg-slate-800 text-blue-400 px-1 rounded">{msg.digimon}</span>}
-                
+              </div>
+              
+              {/* DISEÑO DEL MENSAJE Y BOTÓN DE BORRAR VISIBLE EN MÓVIL */}
+              <div className={`flex items-center gap-2 max-w-[90%] ${msg.autorId === miId ? "flex-row" : "flex-row-reverse"}`}>
+                <div className={`px-3 py-1.5 rounded-lg text-sm break-words ${msg.autorId === miId ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-200"}`}>
+                  {msg.texto}
+                </div>
                 {msg.autorId === miId && (
-                  <button onClick={() => borrarMensaje(msg.id)} className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" title="Borrar mensaje">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <button onClick={() => borrarMensaje(msg.id)} className="text-slate-500 hover:text-red-400 p-1 bg-slate-900/50 rounded-full transition-colors flex-shrink-0" title="Borrar mensaje">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
                 )}
               </div>
-              <div className={`px-3 py-1.5 rounded-lg max-w-[85%] text-sm ${msg.autorId === miId ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-200"}`}>{msg.texto}</div>
             </div>
           ))
         )}
