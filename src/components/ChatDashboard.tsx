@@ -63,6 +63,7 @@ export default function ChatDashboard() {
     ? 'chat/general' 
     : (salaPrivada ? `chat/privado/${salaPrivada}` : null);
 
+  // Efecto para escuchar los mensajes de la sala activa
   useEffect(() => {
     if (!rutaMensajes) { setMensajes([]); return; }
 
@@ -81,11 +82,14 @@ export default function ChatDashboard() {
           lista = lista.filter(m => m.timestamp > ocultoHasta);
         }
         setMensajes(lista);
-      } else { setMensajes([]); }
+      } else { 
+        setMensajes([]); 
+      }
     });
     return () => unsubscribe();
   }, [rutaMensajes, modoChat, miId]);
 
+  // Escuchar solicitudes entrantes
   useEffect(() => {
     if (!miId) return;
     const solicitudesRef = ref(db, `solicitudes/${miId}`);
@@ -106,15 +110,63 @@ export default function ChatDashboard() {
     return () => unsubscribe();
   }, [miId, bloqueados]);
 
+  // Escuchar si aceptaron MIS solicitudes (Soporta múltiples)
+  useEffect(() => {
+    if (!miId) return;
+    const misEnviosRef = ref(db, `solicitudes_enviadas/${miId}`);
+    const unsubscribe = onValue(misEnviosRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        // Recorremos TODAS las solicitudes que me han aceptado
+        Object.entries(data).forEach(([paraId, info]: [string, any]) => {
+          const sala = [miId, paraId].sort().join("-");
+          const existe = conversaciones.find(c => c.id === sala);
+          
+          if (!existe) {
+            // Guardamos el chat en la lista
+            setConversaciones(prev => [...prev, { id: sala, nombre: info.paraNombre }]);
+            
+            // Si no estoy en otra sala, me redirijo a esta nueva
+            if (!salaPrivada) {
+              setSalaPrivada(sala);
+              setNombreContacto(info.paraNombre);
+              setModoChat("privado");
+            }
+          }
+          
+          // Limpiamos esta solicitud específica de Firebase
+          remove(ref(db, `solicitudes_enviadas/${miId}/${paraId}`));
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, [miId, conversaciones, salaPrivada]);
+
   useEffect(() => {
     if (listaRef.current) listaRef.current.scrollTop = listaRef.current.scrollHeight;
   }, [mensajes]);
 
-  const enviarSolicitud = async (autorId: string) => {
+  const enviarSolicitud = async (autorId: string, autorNombre: string) => {
     if (autorId === miId || bloqueados.includes(autorId)) return;
+    
+    // Evitar enviar solicitud si ya tenemos un chat con esa persona
+    const sala = [miId, autorId].sort().join("-");
+    if (conversaciones.find(c => c.id === sala)) {
+      window.dispatchEvent(new CustomEvent('dmpc-toast', { detail: "Ya tienes un chat abierto con esta persona." }));
+      return;
+    }
+
     playClickSound();
+    
+    // Se envía al otro usuario
     const nuevaSolicitudRef = push(ref(db, `solicitudes/${autorId}`));
     await set(nuevaSolicitudRef, { deId: miId, deNombre: miNombre, timestamp: Date.now() });
+    
+    // Se guarda en mis enviadas usando el ID del otro como clave única
+    const misEnviosRef = ref(db, `solicitudes_enviadas/${miId}/${autorId}`);
+    await set(misEnviosRef, { paraId: autorId, paraNombre: autorNombre });
+    
+    window.dispatchEvent(new CustomEvent('dmpc-toast', { detail: `Solicitud enviada a ${autorNombre}. Esperando respuesta...` }));
   };
 
   const aceptarSolicitud = async () => {
@@ -151,8 +203,9 @@ export default function ChatDashboard() {
     await rechazarSolicitud();
   };
 
-  const borrarConversacion = (salaId: string) => {
+  const borrarConversacion = async (salaId: string) => {
     playClickSound();
+    await remove(ref(db, `chat/privado/${salaId}`)); 
     setConversaciones(conversaciones.filter(c => c.id !== salaId));
     if (salaPrivada === salaId) setSalaPrivada("");
   };
@@ -251,7 +304,7 @@ export default function ChatDashboard() {
             conversaciones.map((conv) => (
               <div key={conv.id} className="flex items-center gap-1">
                 <button onClick={() => { playClickSound(); setSalaPrivada(conv.id); setNombreContacto(conv.nombre); }} className="flex-1 text-left bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1.5 rounded text-[10px] font-medium transition-colors truncate">
-                  💬 Chat con: {conv.nombre}
+                  💬 Chat con: {conv.nombre || "Desconocido"}
                 </button>
                 <button onClick={() => borrarConversacion(conv.id)} className="bg-red-900/50 hover:bg-red-800 text-red-300 px-2 py-1.5 rounded text-[10px] font-bold" title="Cerrar chat">X</button>
               </div>
@@ -285,7 +338,7 @@ export default function ChatDashboard() {
           mensajes.map((msg) => (
             <div key={msg.id} className={`flex flex-col ${msg.autorId === miId ? "items-end" : "items-start"} group`}>
               <div className="flex items-center gap-1.5 mb-0.5">
-                <span onClick={() => msg.autorId !== miId && modoChat === "general" && enviarSolicitud(msg.autorId)} className={`text-[9px] font-bold ${msg.autorId !== miId && modoChat === "general" ? "text-blue-400 hover:text-blue-300 cursor-pointer underline decoration-dotted" : "text-slate-500"}`}>{msg.autorNombre}</span>
+                <span onClick={() => msg.autorId !== miId && modoChat === "general" && enviarSolicitud(msg.autorId, msg.autorNombre)} className={`text-[9px] font-bold ${msg.autorId !== miId && modoChat === "general" ? "text-blue-400 hover:text-blue-300 cursor-pointer underline decoration-dotted" : "text-slate-500"}`}>{msg.autorNombre}</span>
                 {msg.digimon && <span className="text-[8px] bg-slate-800 text-blue-400 px-1 rounded">{msg.digimon}</span>}
               </div>
               

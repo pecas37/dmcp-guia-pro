@@ -31,15 +31,41 @@ function App() {
   const [mensajeToast, setMensajeToast] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
 
-  // --- LÓGICA GLOBAL DE NOTIFICACIONES PRIVADAS ---
+  // --- LÓGICA GLOBAL DE NOTIFICACIONES ---
   const miIdGlobal = obtenerMiIdChat();
   
   useEffect(() => {
-    const conversacionesGuardadas = JSON.parse(localStorage.getItem("dmpc_chat_conversaciones") || "[]");
-    
-    if (conversacionesGuardadas.length === 0) return;
+    // 1. Escuchamos solicitudes de chat nuevas
+    const solicitudesRef = ref(db, `solicitudes/${miIdGlobal}`);
+    const unsubscribeSolicitudes = onValue(solicitudesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const primera = Object.values(data)[0] as any;
+        if (primera) {
+          playNotificacionSound();
+          mostrarNotificacion("Nueva Solicitud", `${primera.deNombre} quiere hablar contigo.`);
+          mostrarToastGlobal(`🔔 ¡${primera.deNombre} quiere hablar contigo!`);
+        }
+      }
+    });
 
-    const unsubscribes: (() => void)[] = [];
+    // 2. Escuchamos si alguien acepta nuestra solicitud
+    const misEnviosRef = ref(db, `solicitudes_enviadas/${miIdGlobal}`);
+    const unsubscribeAceptadas = onValue(misEnviosRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const aceptada = Object.values(data)[0] as any;
+        if (aceptada) {
+          playNotificacionSound();
+          mostrarNotificacion("Solicitud Aceptada", `${aceptada.paraNombre} aceptó tu solicitud.`);
+          mostrarToastGlobal(`✅ ${aceptada.paraNombre} aceptó tu solicitud.`);
+        }
+      }
+    });
+
+    // 3. Escuchamos los mensajes privados guardados
+    const conversacionesGuardadas = JSON.parse(localStorage.getItem("dmpc_chat_conversaciones") || "[]");
+    const unsubscribesMensajes: (() => void)[] = [];
     
     conversacionesGuardadas.forEach((conv: any) => {
       const q = query(ref(db, `chat/privado/${conv.id}`), orderByChild('timestamp'), limitToLast(1));
@@ -54,18 +80,29 @@ function App() {
           if (ultimo && ultimo.autorId !== miIdGlobal) {
             if (!primerCarga) {
               playNotificacionSound();
-              mostrarNotificacion(`Mensaje privado de ${ultimo.autorNombre}`, ultimo.texto);
+              mostrarNotificacion(`Mensaje de ${ultimo.autorNombre}`, ultimo.texto);
               mostrarToastGlobal(`💬 ${ultimo.autorNombre}: ${ultimo.texto}`);
             }
           }
         }
         primerCarga = false;
       });
-      unsubscribes.push(unsubscribe);
+      unsubscribesMensajes.push(unsubscribe);
     });
 
-    return () => unsubscribes.forEach(unsub => unsub());
+    return () => {
+      unsubscribeSolicitudes();
+      unsubscribeAceptadas();
+      unsubscribesMensajes.forEach(unsub => unsub());
+    };
   }, [miIdGlobal]);
+
+  // Escuchar el evento global para mostrar Toasts desde ChatDashboard
+  useEffect(() => {
+    const handleToast = (e: any) => mostrarToastGlobal(e.detail);
+    window.addEventListener('dmpc-toast', handleToast);
+    return () => window.removeEventListener('dmpc-toast', handleToast);
+  }, []);
   // -----------------------------------------------
 
   useEffect(() => {
@@ -272,8 +309,9 @@ function App() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 md:p-4 custom-scrollbar">
-          {vistaActiva === "guia" && (
-            !digimonSeleccionado ? (
+          
+          <div style={{ display: vistaActiva === "guia" ? "block" : "none" }}>
+            {!digimonSeleccionado ? (
               <div className="max-w-5xl mx-auto space-y-4">
                 {busqueda.trim() === "" && (
                   <div className="animate-slide-up">
@@ -359,13 +397,18 @@ function App() {
                   ) : (<div className="bg-slate-900/40 border border-slate-800 rounded-lg p-4 text-center"><p className="text-slate-400 text-xs">Límite evolutivo alcanzado.</p></div>)}
                 </div>
               </div>
-            )
-          )}
+            )}
+          </div>
 
-          {vistaActiva === "miProgreso" && <MiProgreso />}
-          {vistaActiva === "notas" && <NotasDashboard />}
-          {vistaActiva === "chat" && <ChatDashboard />}
-          {vistaActiva === "historial" && (
+          <div style={{ display: vistaActiva === "miProgreso" ? "block" : "none" }}>
+            <MiProgreso />
+          </div>
+
+          <div style={{ display: vistaActiva === "notas" ? "block" : "none" }}>
+            <NotasDashboard />
+          </div>
+
+          <div style={{ display: vistaActiva === "historial" ? "block" : "none" }}>
             <div className="max-w-3xl mx-auto space-y-3 animate-fade-in">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold text-white text-glow">Registro</h2>
@@ -385,7 +428,12 @@ function App() {
                 </div>
               ) : (<p className="text-center text-slate-500 text-sm">No hay actividad.</p>)}
             </div>
-          )}
+          </div>
+
+          <div style={{ display: vistaActiva === "chat" ? "block" : "none", height: "100%" }}>
+            <ChatDashboard />
+          </div>
+
         </div>
       </div>
     </div>
