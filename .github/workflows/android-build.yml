@@ -55,57 +55,14 @@ jobs:
       - name: Inicializar proyecto Android de Tauri
         run: npm run tauri android init --ci
 
-      # --- SOLUCIÓN DEFINITIVA: Usar el Gradle que tú descargaste ---
-      - name: Configurar Gradle local
-        run: |
-          cd src-tauri/gen/android
-          # Detectar la versión que pide el wrapper
-          GRADLE_VERSION=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
-          echo "Versión de Gradle requerida: $GRADLE_VERSION"
-
-          # Ruta al zip que tú subiste (está en la raíz del repo, carpeta gradle-cache)
-          LOCAL_ZIP="$GITHUB_WORKSPACE/gradle-cache/gradle-${GRADLE_VERSION}-bin.zip"
-
-          if [ ! -f "$LOCAL_ZIP" ]; then
-            echo "ERROR: No se encontró el archivo $LOCAL_ZIP"
-            echo "Asegúrate de haber subido el .zip a la carpeta gradle-cache en tu repositorio."
-            exit 1
-          fi
-
-          # Apuntar el wrapper al archivo local
-          sed -i "s|distributionUrl=.*|distributionUrl=file://${LOCAL_ZIP}|" gradle/wrapper/gradle-wrapper.properties
-          echo "Configuración del wrapper:"
-          cat gradle/wrapper/gradle-wrapper.properties
-
-      - name: Crear tauri.settings.gradle y local.properties
-        run: |
-          cd src-tauri/gen/android
-          # tauri.settings.gradle (el que faltaba)
-          cat > tauri.settings.gradle << 'EOF'
-          def tauriProjectDir = new File(rootDir, "../../../")
-          include ':tauri-android'
-          project(':tauri-android').projectDir = new File(tauriProjectDir, 'tauri-android')
-          EOF
-          # local.properties
-          echo "sdk.dir=$ANDROID_HOME" > local.properties
-
       - name: Copiar iconos personalizados a Android
         run: |
           cp -r src-tauri/icons/android/* src-tauri/gen/android/app/src/main/res/
 
-      - name: Configurar Gradle para GitHub Actions
-        run: |
-          echo "org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8" >> src-tauri/gen/android/gradle.properties
-          echo "org.gradle.workers.max=2" >> src-tauri/gen/android/gradle.properties
-
       - name: Compilar APK de Android
-        run: |
-          cd src-tauri/gen/android
-          ./gradlew assembleUniversalRelease --stacktrace --info
+        run: npm run tauri android build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
 
       - name: Subir el APK como artefacto descargable
         uses: actions/upload-artifact@v4
