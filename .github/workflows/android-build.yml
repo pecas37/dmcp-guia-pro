@@ -29,7 +29,7 @@ jobs:
           java-version: "21"
 
       - name: Configurar Android SDK
-        uses: android-actions/setup-android@v3
+        uses: actions/setup-android@v3
         with:
           packages: "platform-tools"
 
@@ -59,21 +59,33 @@ jobs:
         run: |
           cp -r src-tauri/icons/android/* src-tauri/gen/android/app/src/main/res/
 
-      # --- SOLUCIÓN: Usar un mirror de Gradle y reintentar ---
-      - name: Configurar mirror de Gradle y reintentos
+      # --- SOLUCIÓN: Pre-descargar Gradle oficial con reintentos y más tiempo ---
+      - name: Pre-descargar distribución de Gradle
         run: |
           cd src-tauri/gen/android
-          # Cambiar la URL de descarga de Gradle a un mirror más estable (Tencent)
-          # Primero obtenemos la versión actual de Gradle del wrapper
-          GRADLE_VERSION=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
-          echo "Versión de Gradle detectada: $GRADLE_VERSION"
-          # Reemplazar la URL por el mirror de Tencent
-          sed -i "s|https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip|https://mirrors.cloud.tencent.com/gradle/gradle-$GRADLE_VERSION-bin.zip|" gradle/wrapper/gradle-wrapper.properties
-          # Aumentar el timeout y reintentos del wrapper
-          sed -i 's/networkTimeout=.*/networkTimeout=60000/' gradle/wrapper/gradle-wrapper.properties
-          sed -i 's/retries=.*/retries=3/' gradle/wrapper/gradle-wrapper.properties
-          echo "Configuración de Gradle actualizada:"
-          cat gradle/wrapper/gradle-wrapper.properties
+          # Extraer la URL oficial del wrapper
+          GRADLE_URL=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | cut -d'=' -f2 | sed 's/\\//g')
+          echo "URL de descarga: $GRADLE_URL"
+          # Descargar con reintentos (3 intentos) y timeout de 5 minutos
+          for i in {1..3}; do
+            echo "Intento $i de descarga..."
+            if curl -L --retry 2 --connect-timeout 30 --max-time 300 -o gradle-download.zip "$GRADLE_URL"; then
+              echo "Descarga exitosa."
+              # Sobrescribir el archivo de distribución para que Gradle use el que descargamos
+              # (Opcional, pero ayuda a que no vuelva a intentar descargar)
+              break
+            else
+              echo "Intento $i falló. Reintentando en 10 segundos..."
+              sleep 10
+            fi
+          done
+          # Si la descarga falló, aumentamos el timeout del wrapper
+          if [ ! -f gradle-download.zip ]; then
+            echo "La pre-descarga falló. Aumentando timeout del wrapper..."
+            sed -i 's/networkTimeout=.*/networkTimeout=60000/' gradle/wrapper/gradle-wrapper.properties
+          fi
+          # Limpiar el archivo de descarga para no ocupar espacio
+          rm -f gradle-download.zip
 
       - name: Configurar Gradle para GitHub Actions
         run: |
