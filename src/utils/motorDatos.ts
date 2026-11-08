@@ -1,4 +1,4 @@
-import { listaCompleta, requisitos } from "../data/digimonData";
+import { listaCompleta, requisitos, TIEMPOS_EVOLUCION, PESOS_IDEALES } from "../data/digimonData";
 
 export interface FichaDigimon {
   nombre: string;
@@ -6,18 +6,18 @@ export interface FichaDigimon {
   rama: string;
   evolucionaA: string;
   requisito: string;
+  tiempoRequerido: string;
+  pesoRecomendado: string;
 }
 
-// Función para limpiar strings (elimina nulos, indefinidos y espacios)
 const limpiar = (valor: any): string => {
   if (typeof valor !== "string") return "";
   return valor.trim();
 };
 
-// Función para buscar el requisito de una rama y etapa
 const obtenerRequisito = (rama: string, etapa: string): string => {
   if (!rama || !etapa) return "No definido";
-  
+
   const req = requisitos.find((r: any) => limpiar(r.RAMA) === limpiar(rama));
   if (!req) return "No definido";
 
@@ -30,37 +30,28 @@ const obtenerRequisito = (rama: string, etapa: string): string => {
   else if (etapa === "ULTIMATE") columna = "De ULTIMATE a SUPER ULTIMATE";
 
   if (!columna) return "No definido";
-  
-  // CORRECCIÓN TS ERROR 1: Se añade "as any" para que TS no proteste por el indexado dinámico
+
   const texto = limpiar((req as any)[columna]);
   return texto || "No definido";
 };
 
-// --- DATOS PROCESADOS ---
-
-// Lista de familias únicas y limpias
 export const FAMILIAS_SEGURAS: string[] = Array.from(
   new Set(listaCompleta.map((d: any) => limpiar(d.Familia)).filter((f: string) => f !== ""))
 ).sort();
 
-// Lista de etapas en orden
 export const ETAPAS_SEGURAS = ["BB1", "BB2", "CHILD", "ADULT", "PERFECT", "ULTIMATE", "SUPER ULTIMATE"];
 
-// Diccionario de Digimons por familia y etapa (solo nombres únicos para mostrar en la lista)
 export const DIGIMONS_SEGUROS: Record<string, Record<string, string[]>> = {};
-
-// Diccionario de información detallada por familia y nombre de Digimon
 export const INFO_DIGIMONS_SEGUROS: Record<string, Record<string, {
   etapa: string;
   preEvoluciones: { nombre: string; rama: string }[];
-  evoluciones: { nombre: string; rama: string; requisito: string }[];
+  evoluciones: { nombre: string; rama: string; requisito: string; tiempoRequerido: string; pesoRecomendado: string }[];
 }>> = {};
 
-// Procesamos los datos
 FAMILIAS_SEGURAS.forEach(familia => {
   DIGIMONS_SEGUROS[familia] = {};
   INFO_DIGIMONS_SEGUROS[familia] = {};
-  
+
   ETAPAS_SEGURAS.forEach(etapa => {
     DIGIMONS_SEGUROS[familia][etapa] = [];
   });
@@ -84,21 +75,23 @@ FAMILIAS_SEGURAS.forEach(familia => {
     }
 
     const preEvoluciones = listaCompleta
-      .filter((d: any) => limpiar(d.Familia) === familia && limpiar(d["Evoluciona A"]) === nombre)
-      .map((d: any) => ({
-        nombre: limpiar(d.Digimon),
-        rama: limpiar(d.Rama)
-      }))
-      .filter(p => p.nombre !== "");
+    .filter((d: any) => limpiar(d.Familia) === familia && limpiar(d["Evoluciona A"]) === nombre)
+    .map((d: any) => ({
+      nombre: limpiar(d.Digimon),
+                      rama: limpiar(d.Rama)
+    }))
+    .filter(p => p.nombre !== "");
 
     const evoluciones = filasDigimon
-      .filter((d: any) => limpiar(d["Evoluciona A"]) !== "")
-      .map((d: any) => ({
-        nombre: limpiar(d["Evoluciona A"]),
-        rama: limpiar(d.Rama),
-        requisito: obtenerRequisito(limpiar(d.Rama), etapa)
-      }))
-      .filter(e => e.nombre !== "");
+    .filter((d: any) => limpiar(d["Evoluciona A"]) !== "")
+    .map((d: any) => ({
+      nombre: limpiar(d["Evoluciona A"]),
+                      rama: limpiar(d.Rama),
+                      requisito: obtenerRequisito(limpiar(d.Rama), etapa),
+                      tiempoRequerido: TIEMPOS_EVOLUCION[etapa] ? `${TIEMPOS_EVOLUCION[etapa]} Horas` : "No definido",
+                      pesoRecomendado: PESOS_IDEALES[etapa] || "No definido"
+    }))
+    .filter(e => e.nombre !== "");
 
     INFO_DIGIMONS_SEGUROS[familia][nombre] = {
       etapa,
@@ -114,34 +107,35 @@ FAMILIAS_SEGURAS.forEach(familia => {
   });
 });
 
-// --- FUNCIONES AUXILIARES PARA EL APP ---
-
 export const obtenerFichasDeDigimon = (familia: string, nombre: string): FichaDigimon[] => {
   if (!familia || !nombre) return [];
   const filas = listaCompleta.filter(
     (d: any) => limpiar(d.Familia) === limpiar(familia) && limpiar(d.Digimon) === limpiar(nombre)
   );
-  
+
   if (filas.length === 0) return [];
 
-  const etapa = limpiar(filas[0].Etapa) || "Desconocida";
-
-  return filas.map((f: any) => ({
-    nombre: limpiar(f.Digimon),
-    etapa: etapa,
-    rama: limpiar(f.Rama),
-    evolucionaA: limpiar(f["Evoluciona A"]),
-    requisito: obtenerRequisito(limpiar(f.Rama), etapa)
-  }));
+  return filas.map((f: any) => {
+    const etapaActual = limpiar(f.Etapa) || "Desconocida";
+    return {
+      nombre: limpiar(f.Digimon),
+                   etapa: etapaActual,
+                   rama: limpiar(f.Rama),
+                   evolucionaA: limpiar(f["Evoluciona A"]),
+                   requisito: obtenerRequisito(limpiar(f.Rama), etapaActual),
+                   tiempoRequerido: TIEMPOS_EVOLUCION[etapaActual] ? `${TIEMPOS_EVOLUCION[etapaActual]} Horas` : "No definido",
+                   pesoRecomendado: PESOS_IDEALES[etapaActual] || "No definido"
+    };
+  });
 };
 
 export const obtenerPreEvoluciones = (familia: string, nombre: string) => {
   if (!familia || !nombre) return [];
   return listaCompleta
-    .filter((d: any) => limpiar(d.Familia) === limpiar(familia) && limpiar(d["Evoluciona A"]) === limpiar(nombre))
-    .map((d: any) => ({
-      nombre: limpiar(d.Digimon),
-      rama: limpiar(d.Rama)
-    }))
-    .filter(p => p.nombre !== "");
+  .filter((d: any) => limpiar(d.Familia) === limpiar(familia) && limpiar(d["Evoluciona A"]) === limpiar(nombre))
+  .map((d: any) => ({
+    nombre: limpiar(d.Digimon),
+                    rama: limpiar(d.Rama)
+  }))
+  .filter(p => p.nombre !== "");
 };

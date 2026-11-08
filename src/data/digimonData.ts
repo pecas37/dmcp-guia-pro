@@ -14002,3 +14002,23 @@ export const requisitos = [
     "Evoluciona A": "Vikemon"
   }
 ];
+// Tiempo que tarda un Digimon en evolucionar DESDE esta etapa hacia la siguiente
+export const TIEMPOS_EVOLUCION: Record<string, number> = {
+  "BB1": 1,         // De BB1 a BB2: 1 Hora
+  "BB2": 6,         // De BB2 a CHILD: 6 Horas
+  "CHILD": 40,      // De CHILD a ADULT: 40 Horas
+  "ADULT": 50,      // De ADULT a PERFECT: 50 Horas
+  "PERFECT": 60,    // De PERFECT a ULTIMATE: 60 Horas
+  "ULTIMATE": 23    // De ULTIMATE a SUPER ULTIMATE: 23 Horas
+};
+
+// Peso ideal que debe tener el Digimon EN esta etapa para poder evolucionar
+export const PESOS_IDEALES: Record<string, string> = {
+  "BB1": "Entre 1 y 2 G",
+  "BB2": "Entre 2 y 5 G",
+  "CHILD": "Entre 5 y 10 G",
+  "ADULT": "Entre 10 y 15 G",
+  "PERFECT": "Entre 15 y 20 G",
+  "ULTIMATE": "Entre 20 y 25 G",
+  "SUPER ULTIMATE": "Entre 25 y 35 G"
+};
