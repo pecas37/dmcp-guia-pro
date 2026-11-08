@@ -110,37 +110,31 @@ export default function ChatDashboard() {
     return () => unsubscribe();
   }, [miId, bloqueados]);
 
-  // Escuchar si aceptaron MIS solicitudes (Soporta múltiples)
+  // Escuchar si aceptaron MIS solicitudes
   useEffect(() => {
     if (!miId) return;
     const misEnviosRef = ref(db, `solicitudes_enviadas/${miId}`);
     const unsubscribe = onValue(misEnviosRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        // Recorremos TODAS las solicitudes que me han aceptado
         Object.entries(data).forEach(([paraId, info]: [string, any]) => {
           const sala = [miId, paraId].sort().join("-");
-          const existe = conversaciones.find(c => c.id === sala);
           
-          if (!existe) {
-            // Guardamos el chat en la lista
+          // Si la sala NO existe en la lista, la creamos y entramos
+          if (!conversaciones.find(c => c.id === sala)) {
             setConversaciones(prev => [...prev, { id: sala, nombre: info.paraNombre }]);
-            
-            // Si no estoy en otra sala, me redirijo a esta nueva
-            if (!salaPrivada) {
-              setSalaPrivada(sala);
-              setNombreContacto(info.paraNombre);
-              setModoChat("privado");
-            }
+            setSalaPrivada(sala);
+            setNombreContacto(info.paraNombre);
+            setModoChat("privado");
           }
           
-          // Limpiamos esta solicitud específica de Firebase
+          // Eliminamos la solicitud de Firebase
           remove(ref(db, `solicitudes_enviadas/${miId}/${paraId}`));
         });
       }
     });
     return () => unsubscribe();
-  }, [miId, conversaciones, salaPrivada]);
+  }, [miId, conversaciones]);
 
   useEffect(() => {
     if (listaRef.current) listaRef.current.scrollTop = listaRef.current.scrollHeight;
@@ -162,7 +156,7 @@ export default function ChatDashboard() {
     const nuevaSolicitudRef = push(ref(db, `solicitudes/${autorId}`));
     await set(nuevaSolicitudRef, { deId: miId, deNombre: miNombre, timestamp: Date.now() });
     
-    // Se guarda en mis enviadas usando el ID del otro como clave única
+    // Se guarda en mis enviadas con el ID del destinatario como clave
     const misEnviosRef = ref(db, `solicitudes_enviadas/${miId}/${autorId}`);
     await set(misEnviosRef, { paraId: autorId, paraNombre: autorNombre });
     
@@ -174,8 +168,7 @@ export default function ChatDashboard() {
     playClickSound();
     const sala = [miId, solicitudSeleccionada.deId].sort().join("-");
     
-    const existe = conversaciones.find(c => c.id === sala);
-    if (!existe) {
+    if (!conversaciones.find(c => c.id === sala)) {
       setConversaciones([...conversaciones, { id: sala, nombre: solicitudSeleccionada.deNombre }]);
     }
     
@@ -190,9 +183,14 @@ export default function ChatDashboard() {
   const rechazarSolicitud = async () => {
     if (!solicitudSeleccionada) return;
     playClickSound();
+    
+    // Al rechazar, borramos la solicitud entrante Y la solicitud enviada del otro
     await remove(ref(db, `solicitudes/${miId}`));
+    await remove(ref(db, `solicitudes_enviadas/${solicitudSeleccionada.deId}/${miId}`));
+    
     setMostrarNotificacionSolicitud(false);
     setSolicitudSeleccionada(null);
+    window.dispatchEvent(new CustomEvent('dmpc-toast', { detail: "Solicitud rechazada." }));
   };
 
   const bloquearAlUsuario = async () => {
