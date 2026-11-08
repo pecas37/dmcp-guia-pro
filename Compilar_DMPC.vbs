@@ -30,7 +30,7 @@ Do
 
         Case "2"
             If MsgBox("Seguro que deseas subir los cambios a GitHub?", vbYesNo + vbQuestion, "Confirmar") = vbYes Then
-                ' Se añaden comandos para configurar usuario/email y asegurar el push a la rama actual
+                ' Se añade git pull --rebase para evitar el error de rechazo y sincronizar con la nube
                 comando = "powershell.exe -NoExit -Command """ & _
                     "$Host.UI.RawUI.BackgroundColor = 'Black'; " & _
                     "$Host.UI.RawUI.ForegroundColor = 'Green'; " & _
@@ -40,11 +40,13 @@ Do
                     "Write-Host 'Configurando identidad de Git...' -ForegroundColor Yellow; " & _
                     "git config user.name 'Desertor H'; " & _
                     "git config user.email 'pk2.37.hm@gmail.com'; " & _
+                    "Write-Host 'Sincronizando con GitHub (por si hay cambios remotos)...' -ForegroundColor Yellow; " & _
+                    "git pull --rebase origin main; " & _
                     "Write-Host 'Preparando archivos...' -ForegroundColor Yellow; " & _
                     "git add .; " & _
                     "git commit -m 'Actualizacion automatica DMPC'; " & _
                     "Write-Host 'Subiendo a GitHub (esto puede tardar)...' -ForegroundColor Yellow; " & _
-                    "git push --set-upstream origin $(git rev-parse --abbrev-ref HEAD); " & _
+                    "git push --set-upstream origin main; " & _
                     "Write-Host '=== PROCESO TERMINADO ===' -ForegroundColor Cyan; " & _
                     "exit"""
                 objShell.Run comando, 1, False
