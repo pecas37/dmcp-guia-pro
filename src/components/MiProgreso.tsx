@@ -4,7 +4,8 @@ import { playClickSound } from "../utils/sonidos";
 import { playNotificacionSound, mostrarNotificacion } from "../utils/notificaciones";
 import { TIEMPOS_EVOLUCION } from "../data/digimonData";
 
-export default function MiProgreso() {
+// Añadimos vistaActiva para forzar la recarga al entrar
+export default function MiProgreso({ onVolver, vistaActiva }: { onVolver: () => void, vistaActiva: string }) {
   const [progreso, setProgreso] = useState<any>(null);
   const [segundos, setSegundos] = useState(0);
   const [activo, setActivo] = useState(false);
@@ -12,8 +13,9 @@ export default function MiProgreso() {
   const [alarmaSonando, setAlarmaSonando] = useState(false);
 
   useEffect(() => {
+    // Se ejecuta cada vez que entras a la vista miProgreso
     setProgreso(obtenerProgreso());
-  }, []);
+  }, [vistaActiva]);
 
   useEffect(() => {
     let interval: any = null;
@@ -64,7 +66,6 @@ export default function MiProgreso() {
     const horas = TIEMPOS_EVOLUCION[etapaActual];
     if (!horas) return;
 
-    // Mapeamos la etapa actual a la etapa a la que va a evolucionar
     const mapaEtapas: Record<string, string> = {
       "BB1": "BB2",
       "BB2": "CHILD",
@@ -88,7 +89,13 @@ export default function MiProgreso() {
   if (!progreso) return null;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+    <div className="max-w-3xl mx-auto space-y-6 animate-fade-in pb-10">
+    <div className="flex justify-start">
+    <button onClick={onVolver} className="bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-2">
+    <span>←</span> Volver a la Guía
+    </button>
+    </div>
+
     <div className="text-center mb-6">
     <h2 className="text-2xl font-bold text-white text-glow">Mi Progreso</h2>
     <p className="text-slate-400 text-sm mt-1">
@@ -96,7 +103,6 @@ export default function MiProgreso() {
     </p>
     </div>
 
-    {/* CONTADOR DE EVOLUCIÓN */}
     <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
     <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">Temporizador de Evolución</h3>
 
@@ -129,10 +135,8 @@ export default function MiProgreso() {
     </button>
     </div>
 
-    {/* BOTONES DE ETAPA */}
     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
     {Object.entries(TIEMPOS_EVOLUCION).map(([etapaActual, horas]) => {
-      // Mapeamos el nombre para mostrarlo en el botón
       const mapaEtapas: Record<string, string> = {
         "BB1": "BB2",
         "BB2": "CHILD",
@@ -162,7 +166,6 @@ export default function MiProgreso() {
     </div>
     </div>
 
-    {/* ESTADÍSTICAS */}
     <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
     <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">Estadísticas</h3>
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

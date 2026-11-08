@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { db } from "./utils/firebase";
 import { ref, onValue } from "firebase/database";
-import { openUrl } from "@tauri-apps/plugin-opener"; // <-- NUEVO IMPORT PARA ANDROID
 import { playClickSound } from "./utils/sonidos";
 import {
   obtenerProgreso,
@@ -27,11 +26,10 @@ type Vista = "guia" | "miProgreso" | "notas" | "historial" | "creditos";
 
 const abrirEnlace = async (url: string) => {
   try {
-    // Usamos el plugin opener que funciona nativamente en Android y Windows
+    const { openUrl } = await import('@tauri-apps/plugin-opener');
     await openUrl(url);
   } catch (error) {
-    console.error("Error al abrir el enlace:", error);
-    // Respaldo para navegador web
+    console.error("Error al abrir enlace:", error);
     window.open(url, "_blank");
   }
 };
@@ -409,15 +407,21 @@ function App() {
           </div>
 
           <div style={{ display: vistaActiva === "miProgreso" ? "block" : "none" }}>
-          <MiProgreso />
+          <MiProgreso onVolver={() => cambiarVista("guia")} vistaActiva={vistaActiva} />
           </div>
 
           <div style={{ display: vistaActiva === "notas" ? "block" : "none" }}>
-          <NotasDashboard />
+          <NotasDashboard onVolver={() => cambiarVista("guia")} vistaActiva={vistaActiva} />
           </div>
 
           <div style={{ display: vistaActiva === "historial" ? "block" : "none" }}>
-          <div className="max-w-3xl mx-auto space-y-3 animate-fade-in">
+          <div className="max-w-3xl mx-auto space-y-3 animate-fade-in pb-10">
+          <div className="flex justify-start mb-2">
+          <button onClick={() => cambiarVista("guia")} className="bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-2">
+          <span>←</span> Volver a la Guía
+          </button>
+          </div>
+
           <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold text-white text-glow">Registro</h2>
           <button onClick={limpiarHistorial} className="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/50 px-3 py-1.5 rounded text-[10px] font-bold transition-all">Limpiar</button>
@@ -439,7 +443,13 @@ function App() {
           </div>
 
           <div style={{ display: vistaActiva === "creditos" ? "block" : "none" }}>
-          <div className="max-w-2xl mx-auto space-y-6 animate-fade-in text-center mt-10 pb-10">
+          <div className="max-w-2xl mx-auto space-y-6 animate-fade-in text-center mt-4 pb-10">
+          <div className="flex justify-start mb-2">
+          <button onClick={() => cambiarVista("guia")} className="bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-2">
+          <span>←</span> Volver a la Guía
+          </button>
+          </div>
+
           <div className="bg-slate-900/60 border border-slate-800 p-8 rounded-2xl shadow-2xl relative overflow-hidden flex flex-col items-center">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500"></div>
 
