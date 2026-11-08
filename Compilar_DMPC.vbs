@@ -30,24 +30,25 @@ Do
 
         Case "2"
             If MsgBox("Seguro que deseas subir los cambios a GitHub?", vbYesNo + vbQuestion, "Confirmar") = vbYes Then
-                ' Se añade git pull --rebase para evitar el error de rechazo y sincronizar con la nube
+                ' Se añade --autostash para evitar el error de "unstaged changes" y sincronizar sin problemas
                 comando = "powershell.exe -NoExit -Command """ & _
                     "$Host.UI.RawUI.BackgroundColor = 'Black'; " & _
                     "$Host.UI.RawUI.ForegroundColor = 'Green'; " & _
                     "Clear-Host; " & _
                     "Set-Location '" & rutaProyecto & "'; " & _
                     "Write-Host '=== SUBIENDO A GITHUB ===' -ForegroundColor Cyan; " & _
-                    "Write-Host 'Configurando identidad de Git...' -ForegroundColor Yellow; " & _
                     "git config user.name 'Desertor H'; " & _
                     "git config user.email 'pk2.37.hm@gmail.com'; " & _
-                    "Write-Host 'Sincronizando con GitHub (por si hay cambios remotos)...' -ForegroundColor Yellow; " & _
-                    "git pull --rebase origin main; " & _
+                    "Write-Host 'Sincronizando con GitHub...' -ForegroundColor Yellow; " & _
+                    "git pull --rebase --autostash origin main; " & _
+                    "if ($LASTEXITCODE -ne 0) { Write-Host '!!! ERROR: Conflicto o fallo en el pull. Resuelvelo manualmente. !!!' -ForegroundColor Red; Read-Host 'Presiona Enter para cerrar'; exit }; " & _
                     "Write-Host 'Preparando archivos...' -ForegroundColor Yellow; " & _
                     "git add .; " & _
                     "git commit -m 'Actualizacion automatica DMPC'; " & _
-                    "Write-Host 'Subiendo a GitHub (esto puede tardar)...' -ForegroundColor Yellow; " & _
+                    "Write-Host 'Subiendo a GitHub...' -ForegroundColor Yellow; " & _
                     "git push --set-upstream origin main; " & _
                     "Write-Host '=== PROCESO TERMINADO ===' -ForegroundColor Cyan; " & _
+                    "Read-Host 'Presiona Enter para cerrar'; " & _
                     "exit"""
                 objShell.Run comando, 1, False
             End If
