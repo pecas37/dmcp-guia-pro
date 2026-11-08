@@ -59,30 +59,21 @@ jobs:
         run: |
           cp -r src-tauri/icons/android/* src-tauri/gen/android/app/src/main/res/
 
-      # --- SOLUCIÓN: Pre-descargar Gradle con reintentos y más tiempo ---
-      - name: Pre-descargar distribución de Gradle
+      # --- SOLUCIÓN: Usar un mirror de Gradle y reintentar ---
+      - name: Configurar mirror de Gradle y reintentos
         run: |
           cd src-tauri/gen/android
-          # Extraer la URL de distribución del wrapper
-          GRADLE_URL=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | cut -d'=' -f2 | sed 's/\\//g')
-          echo "Descargando: $GRADLE_URL"
-          # Descargar con reintentos (3 intentos) y timeout de 5 minutos
-          for i in {1..3}; do
-            echo "Intento $i de descarga..."
-            if curl -L --retry 2 --connect-timeout 30 --max-time 300 -o gradle-download.zip "$GRADLE_URL"; then
-              echo "Descarga exitosa."
-              break
-            else
-              echo "Intento $i falló. Reintentando en 10 segundos..."
-              sleep 10
-            fi
-          done
-          # Si falla, al menos intentamos que Gradle lo haga con más timeout
-          if [ ! -f gradle-download.zip ]; then
-            echo "La pre-descarga falló. Gradle intentará descargarlo durante la compilación."
-            # Aumentar el timeout de red en la configuración del wrapper
-            sed -i 's/networkTimeout=.*/networkTimeout=60000/' gradle/wrapper/gradle-wrapper.properties
-          fi
+          # Cambiar la URL de descarga de Gradle a un mirror más estable (Tencent)
+          # Primero obtenemos la versión actual de Gradle del wrapper
+          GRADLE_VERSION=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
+          echo "Versión de Gradle detectada: $GRADLE_VERSION"
+          # Reemplazar la URL por el mirror de Tencent
+          sed -i "s|https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip|https://mirrors.cloud.tencent.com/gradle/gradle-$GRADLE_VERSION-bin.zip|" gradle/wrapper/gradle-wrapper.properties
+          # Aumentar el timeout y reintentos del wrapper
+          sed -i 's/networkTimeout=.*/networkTimeout=60000/' gradle/wrapper/gradle-wrapper.properties
+          sed -i 's/retries=.*/retries=3/' gradle/wrapper/gradle-wrapper.properties
+          echo "Configuración de Gradle actualizada:"
+          cat gradle/wrapper/gradle-wrapper.properties
 
       - name: Configurar Gradle para GitHub Actions
         run: |
